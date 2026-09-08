@@ -1,0 +1,82 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #0a0a0f;
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.chart-container {
+  background: rgba(15, 23, 42, 0.6);
+  padding: 2rem;
+  border-radius: 20px;
+  margin-bottom: 2rem;
+  height: 400px;
+}
+
+.date-picker {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+input[type=date],
+input[type=number] {
+  padding: 4px 8px;
+  margin: 0 5px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: none;
+  background: #00d4ff;
+  color: #000;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 5px;
+}
+
+.stats-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.stat-box {
+  flex: 1 1 18%;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 15px;
+  padding: 1rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: #00d4ff;
+}
+
+.stat-box span {
+  display: block;
+  font-size: 2rem;
+  margin-top: 0.3rem;
+  color: #e2e8f0;
+}

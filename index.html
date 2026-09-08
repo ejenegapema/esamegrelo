@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Weather Data</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header-info {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #1e293b;
+    border-radius: 12px;
+}
+
+.header-info h1 {
+    color: #f1f5f9;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    font-size: 32px;
+}
+
+.header-info .info-line {
+    color: #cbd5e1;
+    font-size: 18px;
+    font-weight: 500;
+    margin: 5px 0;
+}
+
+.header-info .station-name {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+.date-picker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    color: #cbd5e1;
+}
+
+.date-picker label {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.date-picker input[type="date"],
+.date-picker input[type="number"],
+.date-picker button {
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    padding: 5px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+.date-picker input[type="date"]:focus,
+.date-picker input[type="number"]:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.date-picker button {
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+    padding: 5px 24px;
+    border: none;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.date-picker button:hover {
+    background: #2563eb;
+}
+
+.date-picker button:disabled {
+    background: #475569;
+    cursor: not-allowed;
+}
+
+.autocomplete-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 200px;
+}
+
+.autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.autocomplete-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    color: #cbd5e1;
+    font-size: 15px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.autocomplete-item:hover {
+    background: #334155;
+}
+
+#citySearch {
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    padding: 5px 12px;
+    font-size: 16px;
+    font-weight: 500;
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+#citySearch:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.chart-section {
+    margin-bottom: 35px;
+}
+
+.chart-container {
+    position: relative;
+    height: 450px;
+    background: #1e293b;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    margin-bottom: 15px;
+}
+
+.meteo-info {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #1e293b;
+    border-radius: 12px;
+}
+
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+}
+
+.stats-container.snow-stats {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.stats-container.snow-stats .stat-box {
+    flex: 0 0 auto;
+    min-width: 150px;
+}
+
+@media (max-width: 1024px) {
+    .stats-container {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.stat-box {
+    background: #1e293b;
+    border-radius: 8px;
+    padding: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.stat-box .label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+.stat-box .value {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+    color: #3b82f6;
+    letter-spacing: -0.5px;
+}
+
+.stat-box .date {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+.loading-message {
+    text-align: center;
+    color: #3b82f6;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 20px;
+    display: none;
+}
+
+.error-message {
+    color: #ef4444;
+    padding: 12px;
+    background: #2e1f1f;
+    border: 1px solid #7f1d1d;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    display: none;
+}
+
+.rolling-stats-title {
+    color: #94a3b8;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 20px 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-info">
+            <h1>Weather Data</h1>
+            <div class="info-line"><span id="stationInfo" class="station-name">-</span></div>
+            <div class="info-line"><span id="dateRangeInfo">-</span></div>
+        </div>
+        
+        <div class="meteo-info">
+            <div class="date-picker">
+                <label>Station: 
+                    <input type="number" id="station" placeholder="Station" value="27612" style="width: 100px;">
+                </label>
+                
+                <label>City: 
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="citySearch" placeholder="Search city..." autocomplete="off">
+                        <div id="cityList" class="autocomplete-list" style="display:none;"></div>
+                    </div>
+                </label>
+                
+                <label>From: 
+                    <input type="date" id="fromDate">
+                </label>
+                
+                <label>To: 
+                    <input type="date" id="toDate">
+                </label>
+                
+                <button id="loadBtn">Load Data</button>
+            </div>
+        </div>
+        
+        <div id="loadingMessage" class="loading-message">Loading weather data...</div>
+        <div id="errorMessage" class="error-message"></div>
+        
+        <div class="chart-section">
+            <div class="chart-container">
+                <canvas id="chart"></canvas>
+            </div>
+            <div class="stats-container" id="anomalyStats">
+                <div class="stat-box">
+                    <span class="label">Maximum</span>
+                    <span class="value" id="statMax">-</span>
+                    <span class="date" id="statMaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Mean</span>
+                    <span class="value" id="statMean">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Median</span>
+                    <span class="value" id="statMedian">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Minimum</span>
+                    <span class="value" id="statMin">-</span>
+                    <span class="date" id="statMinDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">% Days > 0</span>
+                    <span class="value" id="statAboveZero">-</span>
+                </div>
+            </div>
+            <div class="rolling-stats-title">Rolling Window Statistics</div>
+            <div class="stats-container" id="anomalyRollingStats">
+                <div class="stat-box">
+                    <span class="label">7-Day Max</span>
+                    <span class="value" id="statAnomaly7Max">-</span>
+                    <span class="date" id="statAnomaly7MaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">7-Day Min</span>
+                    <span class="value" id="statAnomaly7Min">-</span>
+                    <span class="date" id="statAnomaly7MinDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">30-Day Max</span>
+                    <span class="value" id="statAnomaly30Max">-</span>
+                    <span class="date" id="statAnomaly30MaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">30-Day Min</span>
+                    <span class="value" id="statAnomaly30Min">-</span>
+                    <span class="date" id="statAnomaly30MinDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">90-Day Max</span>
+                    <span class="value" id="statAnomaly90Max">-</span>
+                    <span class="date" id="statAnomaly90MaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">90-Day Min</span>
+                    <span class="value" id="statAnomaly90Min">-</span>
+                    <span class="date" id="statAnomaly90MinDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">180-Day Max</span>
+                    <span class="value" id="statAnomaly180Max">-</span>
+                    <span class="date" id="statAnomaly180MaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">180-Day Min</span>
+                    <span class="value" id="statAnomaly180Min">-</span>
+                    <span class="date" id="statAnomaly180MinDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">365-Day Max</span>
+                    <span class="value" id="statAnomaly365Max">-</span>
+                    <span class="date" id="statAnomaly365MaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">365-Day Min</span>
+                    <span class="value" id="statAnomaly365Min">-</span>
+                    <span class="date" id="statAnomaly365MinDate">-</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chart-section">
+            <div class="chart-container">
+                <canvas id="chartTminMax"></canvas>
+            </div>
+            <div class="stats-container" id="tempStats">
+                <div class="stat-box">
+                    <span class="label">Highest Tmax</span>
+                    <span class="value" id="statTmaxHigh">-</span>
+                    <span class="date" id="statTmaxHighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Lowest Tmax</span>
+                    <span class="value" id="statTmaxLow">-</span>
+                    <span class="date" id="statTmaxLowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Highest Tmin</span>
+                    <span class="value" id="statTminHigh">-</span>
+                    <span class="date" id="statTminHighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Lowest Tmin</span>
+                    <span class="value" id="statTminLow">-</span>
+                    <span class="date" id="statTminLowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax > 10°C</span>
+                    <span class="value" id="statTmax10">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax > 15°C</span>
+                    <span class="value" id="statTmax15">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax > 20°C</span>
+                    <span class="value" id="statTmax20">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax > 25°C</span>
+                    <span class="value" id="statTmax25">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax > 30°C</span>
+                    <span class="value" id="statTmax30">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax < 0°C</span>
+                    <span class="value" id="statTmax0">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin < 0°C</span>
+                    <span class="value" id="statTmin0">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin < -10°C</span>
+                    <span class="value" id="statTmin10">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin < -20°C</span>
+                    <span class="value" id="statTmin20">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin < -30°C</span>
+                    <span class="value" id="statTmin30">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin < -40°C</span>
+                    <span class="value" id="statTmin40">-</span>
+                </div>
+            </div>
+            <div class="rolling-stats-title">Rolling Mean Statistics</div>
+            <div class="stats-container" id="tempRollingStats">
+                <div class="stat-box">
+                    <span class="label">Tmax 7-Day High</span>
+                    <span class="value" id="statTmax7High">-</span>
+                    <span class="date" id="statTmax7HighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax 7-Day Low</span>
+                    <span class="value" id="statTmax7Low">-</span>
+                    <span class="date" id="statTmax7LowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin 7-Day High</span>
+                    <span class="value" id="statTmin7High">-</span>
+                    <span class="date" id="statTmin7HighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin 7-Day Low</span>
+                    <span class="value" id="statTmin7Low">-</span>
+                    <span class="date" id="statTmin7LowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax 30-Day High</span>
+                    <span class="value" id="statTmax30High">-</span>
+                    <span class="date" id="statTmax30HighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax 30-Day Low</span>
+                    <span class="value" id="statTmax30Low">-</span>
+                    <span class="date" id="statTmax30LowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin 30-Day High</span>
+                    <span class="value" id="statTmin30High">-</span>
+                    <span class="date" id="statTmin30HighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin 30-Day Low</span>
+                    <span class="value" id="statTmin30Low">-</span>
+                    <span class="date" id="statTmin30LowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax 90-Day High</span>
+                    <span class="value" id="statTmax90High">-</span>
+                    <span class="date" id="statTmax90HighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax 90-Day Low</span>
+                    <span class="value" id="statTmax90Low">-</span>
+                    <span class="date" id="statTmax90LowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin 90-Day High</span>
+                    <span class="value" id="statTmin90High">-</span>
+                    <span class="date" id="statTmin90HighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin 90-Day Low</span>
+                    <span class="value" id="statTmin90Low">-</span>
+                    <span class="date" id="statTmin90LowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax 180-Day High</span>
+                    <span class="value" id="statTmax180High">-</span>
+                    <span class="date" id="statTmax180HighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax 180-Day Low</span>
+                    <span class="value" id="statTmax180Low">-</span>
+                    <span class="date" id="statTmax180LowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin 180-Day High</span>
+                    <span class="value" id="statTmin180High">-</span>
+                    <span class="date" id="statTmin180HighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin 180-Day Low</span>
+                    <span class="value" id="statTmin180Low">-</span>
+                    <span class="date" id="statTmin180LowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax 365-Day High</span>
+                    <span class="value" id="statTmax365High">-</span>
+                    <span class="date" id="statTmax365HighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmax 365-Day Low</span>
+                    <span class="value" id="statTmax365Low">-</span>
+                    <span class="date" id="statTmax365LowDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin 365-Day High</span>
+                    <span class="value" id="statTmin365High">-</span>
+                    <span class="date" id="statTmin365HighDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Tmin 365-Day Low</span>
+                    <span class="value" id="statTmin365Low">-</span>
+                    <span class="date" id="statTmin365LowDate">-</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chart-section">
+            <div class="chart-container">
+                <canvas id="chartPrecip"></canvas>
+            </div>
+            <div class="stats-container" id="precipStats">
+                <div class="stat-box">
+                    <span class="label">Total</span>
+                    <span class="value" id="statPrecipTotal">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Max Daily</span>
+                    <span class="value" id="statPrecipMaxDaily">-</span>
+                    <span class="date" id="statPrecipMaxDailyDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Days > 0mm</span>
+                    <span class="value" id="statPrecipDays0">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Days > 1mm</span>
+                    <span class="value" id="statPrecipDays1">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Days > 5mm</span>
+                    <span class="value" id="statPrecipDays5">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Days > 10mm</span>
+                    <span class="value" id="statPrecipDays10">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Days > 20mm</span>
+                    <span class="value" id="statPrecipDays20">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Days > 30mm</span>
+                    <span class="value" id="statPrecipDays30">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Days > 50mm</span>
+                    <span class="value" id="statPrecipDays50">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Max Dry Days</span>
+                    <span class="value" id="statPrecipDryDays">-</span>
+                </div>
+            </div>
+            <div class="rolling-stats-title">Rolling Sum Statistics</div>
+            <div class="stats-container" id="precipRollingStats">
+                <div class="stat-box">
+                    <span class="label">7-Day Max</span>
+                    <span class="value" id="statPrecip7Max">-</span>
+                    <span class="date" id="statPrecip7MaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">7-Day Min</span>
+                    <span class="value" id="statPrecip7Min">-</span>
+                    <span class="date" id="statPrecip7MinDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">30-Day Max</span>
+                    <span class="value" id="statPrecip30Max">-</span>
+                    <span class="date" id="statPrecip30MaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">30-Day Min</span>
+                    <span class="value" id="statPrecip30Min">-</span>
+                    <span class="date" id="statPrecip30MinDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">90-Day Max</span>
+                    <span class="value" id="statPrecip90Max">-</span>
+                    <span class="date" id="statPrecip90MaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">90-Day Min</span>
+                    <span class="value" id="statPrecip90Min">-</span>
+                    <span class="date" id="statPrecip90MinDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">180-Day Max</span>
+                    <span class="value" id="statPrecip180Max">-</span>
+                    <span class="date" id="statPrecip180MaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">180-Day Min</span>
+                    <span class="value" id="statPrecip180Min">-</span>
+                    <span class="date" id="statPrecip180MinDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">365-Day Max</span>
+                    <span class="value" id="statPrecip365Max">-</span>
+                    <span class="date" id="statPrecip365MaxDate">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">365-Day Min</span>
+                    <span class="value" id="statPrecip365Min">-</span>
+                    <span class="date" id="statPrecip365MinDate">-</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chart-section">
+            <div class="chart-container">
+                <canvas id="chartSnow"></canvas>
+            </div>
+            <div class="stats-container snow-stats" id="snowStats">
+                <div class="stat-box">
+                    <span class="label">First Snow</span>
+                    <span class="value" id="statSnowFirst">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Last Snow</span>
+                    <span class="value" id="statSnowLast">-</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">Max Depth</span>
+                    <span class="value" id="statSnowMax">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let chartInstance = null;
+        let chartTminMax = null;
+        let chartPrecip = null;
+        let chartSnow = null;
+        let stations = [];
+        let isLoading = false;
+        let currentData = null;
+        
+        const API_CONFIG = {
+            BASE_URL: 'https://isamegrelo.wasmer.app/'
+        };
+        
+        const elements = {
+            cityInput: document.getElementById("citySearch"),
+            cityList: document.getElementById("cityList"),
+            stationInput: document.getElementById("station"),
+            fromDate: document.getElementById('fromDate'),
+            toDate: document.getElementById('toDate'),
+            loadBtn: document.getElementById('loadBtn'),
+            errorMessage: document.getElementById('errorMessage'),
+            loadingMessage: document.getElementById('loadingMessage')
+        };
+        
+        Chart.defaults.color = '#cbd5e1';
+        Chart.defaults.borderColor = '#334155';
+        Chart.defaults.font.size = 14;
+        Chart.defaults.font.weight = '500';
+        
+        function formatDateDMY(date) {
+            const d = new Date(date);
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return `${dd}.${mm}.${yyyy}`;
+        }
+        
+        function formatDateForAPI(dateStr) {
+            const d = new Date(dateStr);
+            return {
+                dd: String(d.getDate()).padStart(2, '0'),
+                mm: String(d.getMonth() + 1).padStart(2, '0'),
+                yyyy: d.getFullYear()
+            };
+        }
+        
+        function roundValue(value) {
+            const num = Number(value);
+            return num.toFixed(1);
+        }
+        
+        function showError(message) {
+            elements.errorMessage.textContent = message;
+            elements.errorMessage.style.display = 'block';
+            setTimeout(() => {
+                elements.errorMessage.style.display = 'none';
+            }, 5000);
+        }
+        
+        function setLoading(loading) {
+            isLoading = loading;
+            elements.loadBtn.disabled = loading;
+            elements.loadBtn.textContent = loading ? 'Loading...' : 'Load Data';
+            elements.loadingMessage.style.display = loading ? 'block' : 'none';
+        }
+        
+        function updateHeaderInfo() {
+            const stationId = elements.stationInput.value;
+            const cityName = elements.cityInput.value || `Station ${stationId}`;
+            const fromDate = formatDateDMY(elements.fromDate.value);
+            const toDate = formatDateDMY(elements.toDate.value);
+            
+            document.getElementById('stationInfo').textContent = `${stationId} - ${cityName}`;
+            document.getElementById('dateRangeInfo').textContent = `${fromDate} - ${toDate}`;
+        }
+        
+        function calculateRollingWindowStats(values, dates, windowSize) {
+            if (!values.length || values.length < windowSize) {
+                return { max: null, maxDate: null, maxPeriod: null, min: null, minDate: null, minPeriod: null };
+            }
+            
+            const rollingAverages = [];
+            for (let i = windowSize - 1; i < values.length; i++) {
+                const window = values.slice(i - windowSize + 1, i + 1);
+                const avg = window.reduce((a, b) => a + b, 0) / windowSize;
+                rollingAverages.push({
+                    value: avg,
+                    endDate: dates[i],
+                    startDate: dates[i - windowSize + 1]
+                });
+            }
+            
+            if (rollingAverages.length === 0) return { max: null, maxDate: null, maxPeriod: null, min: null, minDate: null, minPeriod: null };
+            
+            rollingAverages.sort((a, b) => a.value - b.value);
+            const maxItem = rollingAverages[rollingAverages.length - 1];
+            const minItem = rollingAverages[0];
+            
+            return {
+                max: maxItem.value.toFixed(1),
+                maxPeriod: `${formatDateDMY(maxItem.startDate)} - ${formatDateDMY(maxItem.endDate)}`,
+                min: minItem.value.toFixed(1),
+                minPeriod: `${formatDateDMY(minItem.startDate)} - ${formatDateDMY(minItem.endDate)}`
+            };
+        }
+        
+        function calculateRollingMean(values, dates, windowSize) {
+            if (!values.length || values.length < windowSize) {
+                return { max: null, maxPeriod: null, min: null, minPeriod: null };
+            }
+            
+            const rollingMeans = [];
+            for (let i = windowSize - 1; i < values.length; i++) {
+                const window = values.slice(i - windowSize + 1, i + 1);
+                const mean = window.reduce((a, b) => a + b, 0) / windowSize;
+                rollingMeans.push({
+                    value: mean,
+                    endDate: dates[i],
+                    startDate: dates[i - windowSize + 1]
+                });
+            }
+            
+            if (rollingMeans.length === 0) return { max: null, maxPeriod: null, min: null, minPeriod: null };
+            
+            const maxItem = rollingMeans.reduce((prev, curr) => prev.value > curr.value ? prev : curr);
+            const minItem = rollingMeans.reduce((prev, curr) => prev.value < curr.value ? prev : curr);
+            
+            return {
+                max: maxItem.value.toFixed(1),
+                maxPeriod: `${formatDateDMY(maxItem.startDate)} - ${formatDateDMY(maxItem.endDate)}`,
+                min: minItem.value.toFixed(1),
+                minPeriod: `${formatDateDMY(minItem.startDate)} - ${formatDateDMY(minItem.endDate)}`
+            };
+        }
+        
+        function calculateRollingSum(values, dates, windowSize) {
+            if (!values.length || values.length < windowSize) {
+                return { max: null, maxPeriod: null, min: null, minPeriod: null };
+            }
+            
+            const rollingSums = [];
+            for (let i = windowSize - 1; i < values.length; i++) {
+                const window = values.slice(i - windowSize + 1, i + 1);
+                const sum = window.reduce((a, b) => a + b, 0);
+                rollingSums.push({
+                    value: sum,
+                    endDate: dates[i],
+                    startDate: dates[i - windowSize + 1]
+                });
+            }
+            
+            if (rollingSums.length === 0) return { max: null, maxPeriod: null, min: null, minPeriod: null };
+            
+            const maxItem = rollingSums.reduce((prev, curr) => prev.value > curr.value ? prev : curr);
+            const minItem = rollingSums.reduce((prev, curr) => prev.value < curr.value ? prev : curr);
+            
+            return {
+                max: maxItem.value.toFixed(1),
+                maxPeriod: `${formatDateDMY(maxItem.startDate)} - ${formatDateDMY(maxItem.endDate)}`,
+                min: minItem.value.toFixed(1),
+                minPeriod: `${formatDateDMY(minItem.startDate)} - ${formatDateDMY(minItem.endDate)}`
+            };
+        }
+        
+        function calculateAnomalyStats(values, dates) {
+            if (!values.length) {
+                return {
+                    mean: '-',
+                    median: '-',
+                    max: '-',
+                    min: '-',
+                    maxDate: '-',
+                    minDate: '-',
+                    aboveZeroPercent: '-'
+                };
+            }
+            
+            const sorted = [...values].map((v, i) => ({value: v, date: dates[i]}))
+                .sort((a, b) => a.value - b.value);
+            
+            const mid = Math.floor(sorted.length / 2);
+            const median = sorted.length % 2 !== 0 
+                ? sorted[mid].value 
+                : (sorted[mid - 1].value + sorted[mid].value) / 2;
+                
+            const sum = values.reduce((a, b) => a + b, 0);
+            const mean = sum / values.length;
+            
+            const maxItem = sorted[sorted.length - 1];
+            const minItem = sorted[0];
+            
+            const aboveZeroCount = values.filter(v => v > 0).length;
+            const aboveZeroPercent = ((aboveZeroCount / values.length) * 100).toFixed(1);
+            
+            return {
+                mean: mean.toFixed(1),
+                median: median.toFixed(1),
+                max: maxItem.value.toFixed(1),
+                min: minItem.value.toFixed(1),
+                maxDate: formatDateDMY(maxItem.date),
+                minDate: formatDateDMY(minItem.date),
+                aboveZeroPercent: aboveZeroPercent
+            };
+        }
+        
+        function calculateTempStats(tmin, tmax, dates) {
+            if (!tmin.length || !tmax.length) {
+                return {
+                    tmaxHigh: '-', tmaxHighDate: '-',
+                    tmaxLow: '-', tmaxLowDate: '-',
+                    tminHigh: '-', tminHighDate: '-',
+                    tminLow: '-', tminLowDate: '-',
+                    tmax20: 0, tmax25: 0, tmax30: 0,
+                    tmin0: 0, tmin20: 0, tmin40: 0
+                };
+            }
+            
+            const tmaxWithDates = tmax.map((v, i) => ({value: Number(v), date: dates[i]}));
+            const tminWithDates = tmin.map((v, i) => ({value: Number(v), date: dates[i]}));
+            
+            tmaxWithDates.sort((a, b) => a.value - b.value);
+            tminWithDates.sort((a, b) => a.value - b.value);
+            
+            return {
+                tmaxHigh: tmaxWithDates[tmaxWithDates.length - 1].value.toFixed(1),
+                tmaxHighDate: formatDateDMY(tmaxWithDates[tmaxWithDates.length - 1].date),
+                tmaxLow: tmaxWithDates[0].value.toFixed(1),
+                tmaxLowDate: formatDateDMY(tmaxWithDates[0].date),
+                tminHigh: tminWithDates[tminWithDates.length - 1].value.toFixed(1),
+                tminHighDate: formatDateDMY(tminWithDates[tminWithDates.length - 1].date),
+                tminLow: tminWithDates[0].value.toFixed(1),
+                tminLowDate: formatDateDMY(tminWithDates[0].date),
+                tmax10: tmax.filter(v => Number(v) > 10).length,
+                tmax15: tmax.filter(v => Number(v) > 15).length,
+                tmax20: tmax.filter(v => Number(v) > 20).length,
+                tmax25: tmax.filter(v => Number(v) > 25).length,
+                tmax30: tmax.filter(v => Number(v) > 30).length,
+                tmax0: tmax.filter(v => Number(v) < 0).length,
+                tmin0: tmin.filter(v => Number(v) < 0).length,
+                tmin10: tmin.filter(v => Number(v) < -10).length,
+                tmin20: tmin.filter(v => Number(v) < -20).length,
+                tmin30: tmin.filter(v => Number(v) < -30).length,
+                tmin40: tmin.filter(v => Number(v) < -40).length
+            };
+        }
+        
+        function calculatePrecipStats(precip, dates) {
+            if (!precip.length) {
+                return {
+                    total: '-',
+                    maxDaily: '-',
+                    max30: '-',
+                    min30: '-',
+                    days0: 0, days1: 0, days5: 0, days10: 0, days50: 0,
+                    maxDryDays: 0
+                };
+            }
+            
+            const values = precip.map(Number);
+            const total = values.reduce((a, b) => a + b, 0);
+            const maxDaily = Math.max(...values);
+            
+            const maxDailyIndex = values.indexOf(maxDaily);
+            const maxDailyDate = dates[maxDailyIndex];
+            
+            const rolling30 = [];
+            for (let i = 29; i < values.length; i++) {
+                const sum30 = values.slice(i - 29, i + 1).reduce((a, b) => a + b, 0);
+                rolling30.push(sum30);
+            }
+            
+            const max30 = rolling30.length > 0 ? Math.max(...rolling30) : 0;
+            const min30 = rolling30.length > 0 ? Math.min(...rolling30) : 0;
+            
+            let maxDryDays = 0;
+            let currentDryDays = 0;
+            for (const val of values) {
+                if (val === 0 || val === null) {
+                    currentDryDays++;
+                    maxDryDays = Math.max(maxDryDays, currentDryDays);
+                } else {
+                    currentDryDays = 0;
+                }
+            }
+            
+            return {
+                total: total.toFixed(1),
+                maxDaily: maxDaily.toFixed(1),
+                maxDailyDate: formatDateDMY(maxDailyDate),
+                max30: max30.toFixed(1),
+                min30: min30.toFixed(1),
+                days0: values.filter(v => v > 0).length,
+                days1: values.filter(v => v > 1).length,
+                days5: values.filter(v => v > 5).length,
+                days10: values.filter(v => v > 10).length,
+                days20: values.filter(v => v > 20).length,
+                days30: values.filter(v => v > 30).length,
+                days50: values.filter(v => v > 50).length,
+                maxDryDays: maxDryDays
+            };
+        }
+        
+        function calculateSnowStats(snow, dates) {
+            if (!snow.length) {
+                return { first: '-', last: '-', max: '-' };
+            }
+            
+            const snowWithDates = snow.map((v, i) => ({
+                value: v === null || v === undefined ? 0 : Number(v),
+                date: dates[i]
+            })).filter(item => item.value > 0);
+            
+            if (snowWithDates.length === 0) {
+                return { first: '-', last: '-', max: '-' };
+            }
+            
+            const maxSnow = Math.max(...snowWithDates.map(s => s.value));
+            
+            return {
+                first: formatDateDMY(snowWithDates[0].date),
+                last: formatDateDMY(snowWithDates[snowWithDates.length - 1].date),
+                max: maxSnow.toFixed(1)
+            };
+        }
+        
+        function setDefaultDates() {
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            const fromDate = new Date(yesterday);
+            fromDate.setDate(yesterday.getDate() - 29);
+            
+            elements.toDate.value = yesterday.toISOString().split('T')[0];
+            elements.fromDate.value = fromDate.toISOString().split('T')[0];
+        }
+        
+        
+        
+        async function loadStations() {
+            try {
+                const res = await fetch('meteo.json');
+                if (!res.ok) {
+                    throw new Error(`Failed to load stations: ${res.status}`);
+                }
+                stations = await res.json();
+                return true;
+            } catch (err) {
+                console.error('Failed to load stations:', err);
+                return false;
+            }
+        }
+        
+        function setupAutocomplete() {
+            elements.cityInput.addEventListener("input", () => {
+                const query = elements.cityInput.value.trim().toLowerCase();
+                
+                if (query.length < 2) {
+                    elements.cityList.style.display = "none";
+                    return;
+                }
+                
+                const matches = stations.filter(s => 
+                    s.name.toLowerCase().includes(query)
+                ).slice(0, 10);
+                
+                if (!matches.length) {
+                    elements.cityList.style.display = "none";
+                    return;
+                }
+                
+                elements.cityList.innerHTML = "";
+                matches.forEach(s => {
+                    const item = document.createElement("div");
+                    item.className = "autocomplete-item";
+                    item.textContent = s.name;
+                    item.addEventListener("click", () => {
+                        elements.stationInput.value = s.id;
+                        elements.cityInput.value = s.name;
+                        elements.cityList.style.display = "none";
+                    });
+                    elements.cityList.appendChild(item);
+                });
+                elements.cityList.style.display = "block";
+            });
+            
+            document.addEventListener("click", e => {
+                if (!elements.cityList.contains(e.target) && e.target !== elements.cityInput) {
+                    elements.cityList.style.display = "none";
+                }
+            });
+        }
+        
+        const firstOfMonthLinePlugin = {
+            id: 'firstOfMonthLine',
+            afterDraw(chart) {
+                const xScale = chart.scales.x;
+                const yScale = chart.scales.y;
+                if (!xScale || !yScale) return;
+                
+                const ctx = chart.ctx;
+                const start = new Date(xScale.min);
+                start.setDate(1);
+                start.setHours(0, 0, 0, 0);
+                
+                for (let d = new Date(start); d <= xScale.max; d.setMonth(d.getMonth() + 1)) {
+                    const xPixel = xScale.getPixelForValue(d);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(xPixel, yScale.top);
+                    ctx.lineTo(xPixel, yScale.bottom);
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+                    ctx.setLineDash([4, 4]);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        };
+        
+        const tooltipConfig = {
+            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+            titleColor: '#f1f5f9',
+            bodyColor: '#cbd5e1',
+            borderColor: '#334155',
+            borderWidth: 1,
+            padding: 12,
+            displayColors: false,
+            titleFont: { size: 15, weight: '600' },
+            bodyFont: { size: 14, weight: '500' },
+            callbacks: {
+                title: (tooltipItems) => {
+                    return formatDateDMY(tooltipItems[0].raw.x);
+                },
+                label: (context) => {
+                    const value = roundValue(context.raw.y);
+                    return `${context.dataset.label}: ${value}`;
+                }
+            }
+        };
+        
+        const commonScaleConfig = {
+            x: {
+                type: 'time',
+                time: {
+                    unit: 'month',
+                    displayFormats: {
+                        month: 'MM.yyyy'
+                    }
+                },
+                ticks: {
+                    color: '#cbd5e1',
+                    font: { size: 14, family: 'Inter', weight: '500' }
+                },
+                grid: {
+                    display: false
+                }
+            },
+            y: {
+                ticks: {
+                    color: '#cbd5e1',
+                    font: { size: 14, family: 'Inter', weight: '500' }
+                },
+                grid: {
+                    color: 'rgba(51, 65, 85, 0.5)',
+                    drawTicks: false
+                }
+            }
+        };
+        
+        function createTemperatureAnomalyChart(labels, values) {
+            const dataPoints = values.map((v, i) => ({ x: labels[i], y: Number(v) }));
+            const bgColors = values.map(v => 
+                v >= 0 ? 'rgba(220, 38, 38, 0.7)' : 'rgba(59, 130, 246, 0.7)'
+            );
+            const borderColors = values.map(v => 
+                'rgba(0, 0, 0, 0.4)'
+            );
+            
+            const ctx = document.getElementById('chart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    datasets: [{
+                        label: 'Temperature Anomaly',
+                        data: dataPoints,
+                        backgroundColor: bgColors,
+                        borderColor: borderColors,
+                        borderWidth: 1,
+                        barThickness: 6,
+                        maxBarThickness: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'nearest',
+                        intersect: false
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const data = chartInstance.data.datasets[element.datasetIndex].data[element.index];
+                            console.log(`Date: ${formatDateDMY(data.x)}, Value: ${roundValue(data.y)}`);
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: tooltipConfig
+                    },
+                    scales: {
+                        ...commonScaleConfig,
+                        y: {
+                            ...commonScaleConfig.y,
+                            beginAtZero: false
+                        }
+                    }
+                },
+                plugins: [firstOfMonthLinePlugin]
+            });
+        }
+        
+        function createMinMaxChart(labels, tmin, tmax) {
+            const tminPoints = tmin.map((v, i) => ({ x: labels[i], y: Number(v) }));
+            const tmaxPoints = tmax.map((v, i) => ({ x: labels[i], y: Number(v) }));
+            
+            if (chartTminMax) chartTminMax.destroy();
+            
+            chartTminMax = new Chart(document.getElementById("chartTminMax"), {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: "Tmin",
+                            data: tminPoints,
+                            borderColor: "#3b82f6",
+                            backgroundColor: "transparent",
+                            tension: 0,
+                            pointRadius: 2,
+                            pointBackgroundColor: "#000000",
+                            pointBorderColor: "#3b82f6",
+                            pointBorderWidth: 1,
+                            pointHoverRadius: 5,
+                            borderWidth: 2
+                        },
+                        {
+                            label: "Tmax",
+                            data: tmaxPoints,
+                            borderColor: "#ef4444",
+                            backgroundColor: "transparent",
+                            tension: 0,
+                            pointRadius: 2,
+                            pointBackgroundColor: "#000000",
+                            pointBorderColor: "#ef4444",
+                            pointBorderWidth: 1,
+                            pointHoverRadius: 5,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const data = chartTminMax.data.datasets[element.datasetIndex].data[element.index];
+                            console.log(`Date: ${formatDateDMY(data.x)}, Value: ${roundValue(data.y)}`);
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#cbd5e1',
+                                font: { size: 14, weight: '600' }
+                            }
+                        },
+                        tooltip: tooltipConfig
+                    },
+                    scales: {
+                        ...commonScaleConfig,
+                        y: {
+                            ...commonScaleConfig.y,
+                            beginAtZero: false
+                        }
+                    }
+                },
+                plugins: [firstOfMonthLinePlugin]
+            });
+        }
+        
+        function createPrecipitationChart(labels, precip) {
+            const precipAccum = [];
+            let sum = 0;
+            precip.forEach(v => {
+                sum += (Number(v) || 0);
+                precipAccum.push(sum);
+            });
+            
+            const precipPoints = precipAccum.map((v, i) => ({ x: labels[i], y: v }));
+            
+            if (chartPrecip) chartPrecip.destroy();
+            
+            chartPrecip = new Chart(document.getElementById("chartPrecip"), {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: "Accumulated Precipitation",
+                        data: precipPoints,
+                        borderColor: "rgba(0, 0, 0, 0.7)",
+                        backgroundColor: "rgba(59, 130, 246, 0.3)",
+                        fill: true,
+                        tension: 0,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'nearest',
+                        intersect: false
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const data = chartPrecip.data.datasets[element.datasetIndex].data[element.index];
+                            console.log(`Date: ${formatDateDMY(data.x)}, Value: ${roundValue(data.y)}`);
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#cbd5e1',
+                                font: { size: 14, weight: '600' }
+                            }
+                        },
+                        tooltip: tooltipConfig
+                    },
+                    scales: {
+                        ...commonScaleConfig,
+                        y: {
+                            ...commonScaleConfig.y,
+                            beginAtZero: true
+                        }
+                    }
+                },
+                plugins: [firstOfMonthLinePlugin]
+            });
+        }
+        
+        function createSnowChart(labels, snow) {
+            const snowPoints = snow.map((v, i) => ({ 
+                x: labels[i], 
+                y: v === null || v === undefined ? 0 : Number(v) 
+            }));
+            
+            if (chartSnow) chartSnow.destroy();
+            
+            chartSnow = new Chart(document.getElementById("chartSnow"), {
+                type: 'bar',
+                data: {
+                    datasets: [{
+                        label: "Snow Depth",
+                        data: snowPoints,
+                        backgroundColor: "rgba(0, 0, 255, 0.7)",
+                        borderColor: "rgba(0, 0, 0, 0.4)",
+                        barThickness: 6,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'nearest',
+                        intersect: false
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const data = chartSnow.data.datasets[element.datasetIndex].data[element.index];
+                            console.log(`Date: ${formatDateDMY(data.x)}, Value: ${roundValue(data.y)}`);
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#cbd5e1',
+                                font: { size: 14, weight: '600' }
+                            }
+                        },
+                        tooltip: tooltipConfig
+                    },
+                    scales: {
+                        ...commonScaleConfig,
+                        y: {
+                            ...commonScaleConfig.y,
+                            beginAtZero: true
+                        }
+                    }
+                },
+                plugins: [firstOfMonthLinePlugin]
+            });
+        }
+        
+        async function loadData() {
+            if (isLoading) return;
+            
+            setLoading(true);
+            updateHeaderInfo();
+            
+            try {
+                const from = formatDateForAPI(elements.fromDate.value);
+                const to = formatDateForAPI(elements.toDate.value);
+                const station = elements.stationInput.value || '24688';
+                
+                const url = `${API_CONFIG.BASE_URL}data.php?fd=${from.dd}&fm=${from.mm}&fy=${from.yyyy}&ld=${to.dd}&lm=${to.mm}&ly=${to.yyyy}&station=${station}`;
+                
+                console.log('Fetching from URL:', url);
+                
+                const res = await fetch(url);
+                if (!res.ok) {
+                    throw new Error(`Network response was not ok: ${res.status}`);
+                }
+                
+                const json = await res.json();
+                currentData = json;
+                
+                if (!json.dates || !json.tema) {
+                    throw new Error('Invalid data format received');
+                }
+                
+                const labels = json.dates.map(d => {
+                    const [dd, mm, yyyy] = d.split('.');
+                    return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+                });
+                
+                createTemperatureAnomalyChart(labels, json.tema);
+                
+                if (json.tmin && json.tmax) {
+                    createMinMaxChart(labels, json.tmin, json.tmax);
+                }
+                
+                if (json.precip) {
+                    createPrecipitationChart(labels, json.precip);
+                }
+                
+                if (json.snow) {
+                    createSnowChart(labels, json.snow);
+                }
+                
+                const anomalyValues = json.tema.map(Number);
+                const anomalyStats = calculateAnomalyStats(anomalyValues, labels);
+                document.getElementById('statMax').textContent = anomalyStats.max + '°';
+                document.getElementById('statMaxDate').textContent = anomalyStats.maxDate;
+                document.getElementById('statMean').textContent = anomalyStats.mean + '°';
+                document.getElementById('statMedian').textContent = anomalyStats.median + '°';
+                document.getElementById('statMin').textContent = anomalyStats.min + '°';
+                document.getElementById('statMinDate').textContent = anomalyStats.minDate;
+                document.getElementById('statAboveZero').textContent = anomalyStats.aboveZeroPercent + '%';
+                
+                const rolling7 = calculateRollingWindowStats(anomalyValues, labels, 7);
+                const rolling30 = calculateRollingWindowStats(anomalyValues, labels, 30);
+                const rolling90 = calculateRollingWindowStats(anomalyValues, labels, 90);
+                const rolling180 = calculateRollingWindowStats(anomalyValues, labels, 180);
+                const rolling365 = calculateRollingWindowStats(anomalyValues, labels, 365);
+                
+                document.getElementById('statAnomaly7Max').textContent = rolling7.max ? rolling7.max + '°' : '-';
+                document.getElementById('statAnomaly7MaxDate').textContent = rolling7.maxPeriod || '-';
+                document.getElementById('statAnomaly7Min').textContent = rolling7.min ? rolling7.min + '°' : '-';
+                document.getElementById('statAnomaly7MinDate').textContent = rolling7.minPeriod || '-';
+                
+                document.getElementById('statAnomaly30Max').textContent = rolling30.max ? rolling30.max + '°' : '-';
+                document.getElementById('statAnomaly30MaxDate').textContent = rolling30.maxPeriod || '-';
+                document.getElementById('statAnomaly30Min').textContent = rolling30.min ? rolling30.min + '°' : '-';
+                document.getElementById('statAnomaly30MinDate').textContent = rolling30.minPeriod || '-';
+                
+                document.getElementById('statAnomaly90Max').textContent = rolling90.max ? rolling90.max + '°' : '-';
+                document.getElementById('statAnomaly90MaxDate').textContent = rolling90.maxPeriod || '-';
+                document.getElementById('statAnomaly90Min').textContent = rolling90.min ? rolling90.min + '°' : '-';
+                document.getElementById('statAnomaly90MinDate').textContent = rolling90.minPeriod || '-';
+                
+                document.getElementById('statAnomaly180Max').textContent = rolling180.max ? rolling180.max + '°' : '-';
+                document.getElementById('statAnomaly180MaxDate').textContent = rolling180.maxPeriod || '-';
+                document.getElementById('statAnomaly180Min').textContent = rolling180.min ? rolling180.min + '°' : '-';
+                document.getElementById('statAnomaly180MinDate').textContent = rolling180.minPeriod || '-';
+                
+                document.getElementById('statAnomaly365Max').textContent = rolling365.max ? rolling365.max + '°' : '-';
+                document.getElementById('statAnomaly365MaxDate').textContent = rolling365.maxPeriod || '-';
+                document.getElementById('statAnomaly365Min').textContent = rolling365.min ? rolling365.min + '°' : '-';
+                document.getElementById('statAnomaly365MinDate').textContent = rolling365.minPeriod || '-';
+                
+                if (json.tmin && json.tmax) {
+                    const tempStats = calculateTempStats(json.tmin, json.tmax, labels);
+                    document.getElementById('statTmaxHigh').textContent = tempStats.tmaxHigh + '°';
+                    document.getElementById('statTmaxHighDate').textContent = tempStats.tmaxHighDate;
+                    document.getElementById('statTmaxLow').textContent = tempStats.tmaxLow + '°';
+                    document.getElementById('statTmaxLowDate').textContent = tempStats.tmaxLowDate;
+                    document.getElementById('statTminHigh').textContent = tempStats.tminHigh + '°';
+                    document.getElementById('statTminHighDate').textContent = tempStats.tminHighDate;
+                    document.getElementById('statTminLow').textContent = tempStats.tminLow + '°';
+                    document.getElementById('statTminLowDate').textContent = tempStats.tminLowDate;
+                    document.getElementById('statTmax10').textContent = tempStats.tmax10;
+                    document.getElementById('statTmax15').textContent = tempStats.tmax15;
+                    document.getElementById('statTmax20').textContent = tempStats.tmax20;
+                    document.getElementById('statTmax25').textContent = tempStats.tmax25;
+                    document.getElementById('statTmax30').textContent = tempStats.tmax30;
+                    document.getElementById('statTmax0').textContent = tempStats.tmax0;
+                    document.getElementById('statTmin0').textContent = tempStats.tmin0;
+                    document.getElementById('statTmin10').textContent = tempStats.tmin10;
+                    document.getElementById('statTmin20').textContent = tempStats.tmin20;
+                    document.getElementById('statTmin30').textContent = tempStats.tmin30;
+                    document.getElementById('statTmin40').textContent = tempStats.tmin40;
+                    
+                    const tmaxValues = json.tmax.map(Number);
+                    const tminValues = json.tmin.map(Number);
+                    
+                    const tmax7 = calculateRollingMean(tmaxValues, labels, 7);
+                    const tmin7 = calculateRollingMean(tminValues, labels, 7);
+                    const tmax30 = calculateRollingMean(tmaxValues, labels, 30);
+                    const tmin30 = calculateRollingMean(tminValues, labels, 30);
+                    const tmax90 = calculateRollingMean(tmaxValues, labels, 90);
+                    const tmin90 = calculateRollingMean(tminValues, labels, 90);
+                    const tmax180 = calculateRollingMean(tmaxValues, labels, 180);
+                    const tmin180 = calculateRollingMean(tminValues, labels, 180);
+                    const tmax365 = calculateRollingMean(tmaxValues, labels, 365);
+                    const tmin365 = calculateRollingMean(tminValues, labels, 365);
+                    
+                    document.getElementById('statTmax7High').textContent = tmax7.max ? tmax7.max + '°' : '-';
+                    document.getElementById('statTmax7HighDate').textContent = tmax7.maxPeriod || '-';
+                    document.getElementById('statTmax7Low').textContent = tmax7.min ? tmax7.min + '°' : '-';
+                    document.getElementById('statTmax7LowDate').textContent = tmax7.minPeriod || '-';
+                    document.getElementById('statTmin7High').textContent = tmin7.max ? tmin7.max + '°' : '-';
+                    document.getElementById('statTmin7HighDate').textContent = tmin7.maxPeriod || '-';
+                    document.getElementById('statTmin7Low').textContent = tmin7.min ? tmin7.min + '°' : '-';
+                    document.getElementById('statTmin7LowDate').textContent = tmin7.minPeriod || '-';
+                    
+                    document.getElementById('statTmax30High').textContent = tmax30.max ? tmax30.max + '°' : '-';
+                    document.getElementById('statTmax30HighDate').textContent = tmax30.maxPeriod || '-';
+                    document.getElementById('statTmax30Low').textContent = tmax30.min ? tmax30.min + '°' : '-';
+                    document.getElementById('statTmax30LowDate').textContent = tmax30.minPeriod || '-';
+                    document.getElementById('statTmin30High').textContent = tmin30.max ? tmin30.max + '°' : '-';
+                    document.getElementById('statTmin30HighDate').textContent = tmin30.maxPeriod || '-';
+                    document.getElementById('statTmin30Low').textContent = tmin30.min ? tmin30.min + '°' : '-';
+                    document.getElementById('statTmin30LowDate').textContent = tmin30.minPeriod || '-';
+                    
+                    document.getElementById('statTmax90High').textContent = tmax90.max ? tmax90.max + '°' : '-';
+                    document.getElementById('statTmax90HighDate').textContent = tmax90.maxPeriod || '-';
+                    document.getElementById('statTmax90Low').textContent = tmax90.min ? tmax90.min + '°' : '-';
+                    document.getElementById('statTmax90LowDate').textContent = tmax90.minPeriod || '-';
+                    document.getElementById('statTmin90High').textContent = tmin90.max ? tmin90.max + '°' : '-';
+                    document.getElementById('statTmin90HighDate').textContent = tmin90.maxPeriod || '-';
+                    document.getElementById('statTmin90Low').textContent = tmin90.min ? tmin90.min + '°' : '-';
+                    document.getElementById('statTmin90LowDate').textContent = tmin90.minPeriod || '-';
+                    
+                    document.getElementById('statTmax180High').textContent = tmax180.max ? tmax180.max + '°' : '-';
+                    document.getElementById('statTmax180HighDate').textContent = tmax180.maxPeriod || '-';
+                    document.getElementById('statTmax180Low').textContent = tmax180.min ? tmax180.min + '°' : '-';
+                    document.getElementById('statTmax180LowDate').textContent = tmax180.minPeriod || '-';
+                    document.getElementById('statTmin180High').textContent = tmin180.max ? tmin180.max + '°' : '-';
+                    document.getElementById('statTmin180HighDate').textContent = tmin180.maxPeriod || '-';
+                    document.getElementById('statTmin180Low').textContent = tmin180.min ? tmin180.min + '°' : '-';
+                    document.getElementById('statTmin180LowDate').textContent = tmin180.minPeriod || '-';
+                    
+                    document.getElementById('statTmax365High').textContent = tmax365.max ? tmax365.max + '°' : '-';
+                    document.getElementById('statTmax365HighDate').textContent = tmax365.maxPeriod || '-';
+                    document.getElementById('statTmax365Low').textContent = tmax365.min ? tmax365.min + '°' : '-';
+                    document.getElementById('statTmax365LowDate').textContent = tmax365.minPeriod || '-';
+                    document.getElementById('statTmin365High').textContent = tmin365.max ? tmin365.max + '°' : '-';
+                    document.getElementById('statTmin365HighDate').textContent = tmin365.maxPeriod || '-';
+                    document.getElementById('statTmin365Low').textContent = tmin365.min ? tmin365.min + '°' : '-';
+                    document.getElementById('statTmin365LowDate').textContent = tmin365.minPeriod || '-';
+                }
+                
+                if (json.precip) {
+                    const precipStats = calculatePrecipStats(json.precip, labels);
+                    document.getElementById('statPrecipTotal').textContent = precipStats.total + ' mm';
+                    document.getElementById('statPrecipMaxDaily').textContent = precipStats.maxDaily + ' mm';
+                    document.getElementById('statPrecipMaxDailyDate').textContent = precipStats.maxDailyDate;
+                    document.getElementById('statPrecipDays0').textContent = precipStats.days0;
+                    document.getElementById('statPrecipDays1').textContent = precipStats.days1;
+                    document.getElementById('statPrecipDays5').textContent = precipStats.days5;
+                    document.getElementById('statPrecipDays10').textContent = precipStats.days10;
+                    document.getElementById('statPrecipDays20').textContent = precipStats.days20;
+                    document.getElementById('statPrecipDays30').textContent = precipStats.days30;
+                    document.getElementById('statPrecipDays50').textContent = precipStats.days50;
+                    document.getElementById('statPrecipDryDays').textContent = precipStats.maxDryDays;
+                    
+                    const precipValues = json.precip.map(Number);
+                    
+                    const precip7 = calculateRollingSum(precipValues, labels, 7);
+                    const precip30 = calculateRollingSum(precipValues, labels, 30);
+                    const precip90 = calculateRollingSum(precipValues, labels, 90);
+                    const precip180 = calculateRollingSum(precipValues, labels, 180);
+                    const precip365 = calculateRollingSum(precipValues, labels, 365);
+                    
+                    document.getElementById('statPrecip7Max').textContent = precip7.max ? precip7.max + ' mm' : '-';
+                    document.getElementById('statPrecip7MaxDate').textContent = precip7.maxPeriod || '-';
+                    document.getElementById('statPrecip7Min').textContent = precip7.min ? precip7.min + ' mm' : '-';
+                    document.getElementById('statPrecip7MinDate').textContent = precip7.minPeriod || '-';
+                    
+                    document.getElementById('statPrecip30Max').textContent = precip30.max ? precip30.max + ' mm' : '-';
+                    document.getElementById('statPrecip30MaxDate').textContent = precip30.maxPeriod || '-';
+                    document.getElementById('statPrecip30Min').textContent = precip30.min ? precip30.min + ' mm' : '-';
+                    document.getElementById('statPrecip30MinDate').textContent = precip30.minPeriod || '-';
+                    
+                    document.getElementById('statPrecip90Max').textContent = precip90.max ? precip90.max + ' mm' : '-';
+                    document.getElementById('statPrecip90MaxDate').textContent = precip90.maxPeriod || '-';
+                    document.getElementById('statPrecip90Min').textContent = precip90.min ? precip90.min + ' mm' : '-';
+                    document.getElementById('statPrecip90MinDate').textContent = precip90.minPeriod || '-';
+                    
+                    document.getElementById('statPrecip180Max').textContent = precip180.max ? precip180.max + ' mm' : '-';
+                    document.getElementById('statPrecip180MaxDate').textContent = precip180.maxPeriod || '-';
+                    document.getElementById('statPrecip180Min').textContent = precip180.min ? precip180.min + ' mm' : '-';
+                    document.getElementById('statPrecip180MinDate').textContent = precip180.minPeriod || '-';
+                    
+                    document.getElementById('statPrecip365Max').textContent = precip365.max ? precip365.max + ' mm' : '-';
+                    document.getElementById('statPrecip365MaxDate').textContent = precip365.maxPeriod || '-';
+                    document.getElementById('statPrecip365Min').textContent = precip365.min ? precip365.min + ' mm' : '-';
+                    document.getElementById('statPrecip365MinDate').textContent = precip365.minPeriod || '-';
+                }
+                
+                if (json.snow) {
+                    const snowStats = calculateSnowStats(json.snow, labels);
+                    document.getElementById('statSnowFirst').textContent = snowStats.first;
+                    document.getElementById('statSnowLast').textContent = snowStats.last;
+                    document.getElementById('statSnowMax').textContent = snowStats.max + ' cm';
+                }
+                
+            } catch (err) {
+                console.error('Data loading error:', err);
+                showError(`Failed to load data: ${err.message}`);
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        async function init() {
+            setDefaultDates();
+            setupAutocomplete();
+            
+            const [stationsLoaded] = await Promise.all([
+                loadStations()
+            ]);
+            
+            elements.loadBtn.addEventListener('click', loadData);
+        }
+        
+        init();
+    </script>
+</body>
+</html>
