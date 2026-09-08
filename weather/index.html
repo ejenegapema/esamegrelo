@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Forecast</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header-info {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #1e293b;
+    border-radius: 12px;
+}
+
+.header-info h1 {
+    color: #f1f5f9;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    font-size: 32px;
+}
+
+.header-info .info-line {
+    color: #cbd5e1;
+    font-size: 18px;
+    font-weight: 500;
+    margin: 5px 0;
+}
+
+.input-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #1e293b;
+    border-radius: 12px;
+    flex-wrap: wrap;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.input-group label {
+    color: #f1f5f9;
+    font-weight: 600;
+    font-size: 16px;
+    white-space: nowrap;
+}
+
+.input-group input {
+    padding: 8px 12px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 8px;
+    font-size: 16px;
+    width: 100px;
+    font-weight: 500;
+}
+
+.input-group select {
+    padding: 8px 12px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.update-button {
+    padding: 8px 24px;
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.update-button:hover {
+    background: #2563eb;
+}
+
+.loading-message {
+    text-align: center;
+    color: #3b82f6;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 20px;
+    display: none;
+}
+
+.error-message {
+    color: #ef4444;
+    padding: 12px;
+    background: #2e1f1f;
+    border: 1px solid #7f1d1d;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+    display: none;
+}
+
+.parameter-block {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+}
+
+.parameter-title {
+    color: #f1f5f9;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: #334155;
+    border-radius: 8px;
+}
+
+.weather-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.weather-table th,
+.weather-table td {
+    text-align: center;
+    padding: 8px 4px;
+    border: 1px solid #475569;
+    white-space: nowrap;
+}
+
+.weather-table th {
+    background: #334155;
+    color: #f1f5f9;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.model-name {
+    background: #475569;
+    color: #f1f5f9;
+    font-weight: 700;
+    text-align: left;
+    padding-left: 10px;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    min-width: 150px;
+}
+
+.date-header {
+    background: #64748b;
+    color: #f1f5f9;
+    font-weight: 700;
+}
+
+.value-cell {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.temp-cell {
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.precip-cell {
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.wind-cell {
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.prob-cell {
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.sunshine-cell {
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.no-data {
+    color: #64748b;
+    font-style: italic;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header-info">
+        <h1>Weather Forecast</h1>
+        <div class="info-line">Location: <span id="locationInfo">42.5°, 41.9°</span></div>
+        
+    </div>
+
+    <div class="input-container">
+        <div class="input-group">
+            <label for="latInput">Latitude:</label>
+            <input type="number" id="latInput" value="42.5" step="0.1" min="-90" max="90">
+        </div>
+        <div class="input-group">
+            <label for="lonInput">Longitude:</label>
+            <input type="number" id="lonInput" value="41.9" step="0.1" min="-180" max="180">
+        </div>
+        <button class="update-button" onclick="updateWeatherData()">Update</button>
+    </div>
+
+    <div id="loading" class="loading-message">
+        Loading weather data from all models...
+    </div>
+
+    <div id="error" class="error-message"></div>
+
+    <div id="forecastContainer"></div>
+</div>
+
+<script>
+let currentLat = 42.5;
+let currentLon = 41.9;
+let currentDays = 16;
+
+const MODELS = [
+    { key: 'gfs_global', name: 'GFS' },
+    { key: 'gfs_graphcast025', name: 'GraphCast' },
+    { key: 'ecmwf_ifs025', name: 'ECMWF IFS' },
+    { key: 'ecmwf_aifs025_single', name: 'ECMWF AIFS' },
+    { key: 'kma_gdps', name: 'KMA' },
+    { key: 'jma_gsm', name: 'JMA' },
+    { key: 'gem_global', name: 'GEM' },
+    { key: 'icon_global', name: 'ICON' },
+    { key: 'ukmo_global_deterministic_10km', name: 'UKMO' },
+    { key: 'meteofrance_arpege_world', name: 'ARPEGE' }
+];
+
+const PARAMETERS = [
+    { key: 'temperature_2m_max', label: 'Maximum Temperature (°C)', type: 'temp' },
+    { key: 'temperature_2m_min', label: 'Minimum Temperature (°C)', type: 'temp' },
+    { key: 'precipitation_sum', label: 'Total Precipitation (mm)', type: 'precip' },
+    { key: 'precipitation_probability_max', label: 'Precipitation Probability (%)', type: 'prob' },
+    { key: 'wind_gusts_10m_max', label: 'Wind Gusts (m/s)', type: 'wind' },
+    { key: 'sunshine_duration', label: 'Sunshine Duration (hours)', type: 'sunshine' }
+];
+
+const TEMP_COLOR_MAP = [
+  { temp: 60, color: '#140000' },
+  { temp: 59, color: '#140000' },
+  { temp: 58, color: '#140000' },
+  { temp: 57, color: '#140000' },
+  { temp: 56, color: '#140000' },
+  { temp: 55, color: '#140000' },
+  { temp: 54, color: '#140000' },
+  { temp: 53, color: '#140000' },
+  { temp: 52, color: '#140000' },
+  { temp: 51, color: '#140000' },
+  { temp: 50, color: '#640000' },
+  { temp: 49, color: '#720000' },
+  { temp: 48, color: '#820000' },
+  { temp: 47, color: '#960000' },
+  { temp: 46, color: '#960000' },
+  { temp: 45, color: '#960000' },
+  { temp: 44, color: '#C80000' },
+  { temp: 43, color: '#C80000' },
+  { temp: 42, color: '#C80000' },
+  { temp: 41, color: '#C80000' },
+  { temp: 40, color: '#FF0000' },
+  { temp: 39, color: '#FF0000' },
+  { temp: 38, color: '#FF0000' },
+  { temp: 37, color: '#FF0028' },
+  { temp: 36, color: '#FF0028' },
+  { temp: 35, color: '#FF0028' },
+  { temp: 34, color: '#FF002D' },
+  { temp: 33, color: '#FF002D' },
+  { temp: 32, color: '#FF002D' },
+  { temp: 31, color: '#FF502F' },
+  { temp: 30, color: '#FF502F' },
+  { temp: 29, color: '#FF502F' },
+  { temp: 28, color: '#FF8835' },
+  { temp: 27, color: '#FF8835' },
+  { temp: 26, color: '#FF8835' },
+  { temp: 25, color: '#FF8835' },
+  { temp: 24, color: '#FFB339' },
+  { temp: 23, color: '#FFB339' },
+  { temp: 22, color: '#FFCD3C' },
+  { temp: 21, color: '#FFCD3C' },
+  { temp: 20, color: '#FFCD3C' },
+  { temp: 19, color: '#ECEB3C' },
+  { temp: 18, color: '#ECEB3C' },
+  { temp: 17, color: '#ECEB3C' },
+  { temp: 16, color: '#D5FF3C' },
+  { temp: 15, color: '#D5FF3C' },
+  { temp: 14, color: '#D5FF3C' },
+  { temp: 13, color: '#A0FF47' },
+  { temp: 12, color: '#A0FF47' },
+  { temp: 11, color: '#A0FF47' },
+  { temp: 10, color: '#A0FF47' },
+  { temp: 9, color: '#69FF60' },
+  { temp: 8, color: '#69FF60' },
+  { temp: 7, color: '#37FF8E' },
+  { temp: 6, color: '#37FF8E' },
+  { temp: 5, color: '#37FF8E' },
+  { temp: 4, color: '#37FF8E' },
+  { temp: 3, color: '#0AFFBE' },
+  { temp: 2, color: '#0AFFBE' },
+  { temp: 1, color: '#0AFFBE' },
+  { temp: 0, color: '#00FFFF' },
+  { temp: -1, color: '#00FFFF' },
+  { temp: -2, color: '#00FFFF' },
+  { temp: -3, color: '#1CFFFF' },
+  { temp: -4, color: '#1CFFFF' },
+  { temp: -5, color: '#1CFFFF' },
+  { temp: -6, color: '#1EFFFF' },
+  { temp: -7, color: '#1EFFFF' },
+  { temp: -8, color: '#1EFFFF' },
+  { temp: -9, color: '#28D2FF' },
+  { temp: -10, color: '#28D2FF' },
+  { temp: -11, color: '#28D2FF' },
+  { temp: -12, color: '#28A9FF' },
+  { temp: -13, color: '#28A9FF' },
+  { temp: -14, color: '#28A9FF' },
+  { temp: -15, color: '#2894FF' },
+  { temp: -16, color: '#2894FF' },
+  { temp: -17, color: '#2894FF' },
+  { temp: -18, color: '#6450FF' },
+  { temp: -19, color: '#6450FF' },
+  { temp: -20, color: '#6450FF' },
+  { temp: -21, color: '#A826FF' },
+  { temp: -22, color: '#A826FF' },
+  { temp: -23, color: '#A826FF' },
+  { temp: -24, color: '#C800FF' },
+  { temp: -25, color: '#C800FF' },
+  { temp: -26, color: '#C800FF' },
+  { temp: -27, color: '#E600FF' },
+  { temp: -28, color: '#E600FF' },
+  { temp: -29, color: '#E600FF' },
+  { temp: -30, color: '#E600FF' },
+  { temp: -31, color: '#FF00FF' },
+  { temp: -32, color: '#FF00FF' },
+  { temp: -33, color: '#F000F0' },
+  { temp: -34, color: '#F000F0' },
+  { temp: -35, color: '#F000F0' },
+  { temp: -36, color: '#F000F0' },
+  { temp: -37, color: '#DC00DC' },
+  { temp: -38, color: '#DC00DC' },
+  { temp: -39, color: '#DC00DC' },
+  { temp: -40, color: '#BE00BE' },
+  { temp: -41, color: '#BE00BE' },
+  { temp: -42, color: '#BE00BE' },
+  { temp: -43, color: '#A000A0' },
+  { temp: -44, color: '#A000A0' },
+  { temp: -45, color: '#A000A0' },
+  { temp: -46, color: '#820082' },
+  { temp: -47, color: '#820082' },
+  { temp: -48, color: '#820082' },
+  { temp: -49, color: '#820082' },
+  { temp: -50, color: '#640064' },
+  { temp: -51, color: '#640064' },
+  { temp: -52, color: '#640064' },
+  { temp: -53, color: '#460046' },
+  { temp: -54, color: '#460046' },
+  { temp: -55, color: '#460046' },
+  { temp: -56, color: '#280028' },
+  { temp: -57, color: '#280028' },
+  { temp: -58, color: '#0A000A' },
+  { temp: -59, color: '#0A000A' },
+  { temp: -60, color: '#0A000A' }
+];
+
+function getTemperatureColor(temp) {
+    if (temp === null || temp === undefined || isNaN(temp)) {
+        return { bg: '#1e293b', text: '#f1f5f9' };
+    }
+    
+    for (let i = 0; i < TEMP_COLOR_MAP.length; i++) {
+        if (temp >= TEMP_COLOR_MAP[i].temp) {
+            const color = TEMP_COLOR_MAP[i].color;
+            const rgb = parseInt(color.slice(1), 16);
+            const r = (rgb >> 16) & 255;
+            const g = (rgb >> 8) & 255;
+            const b = rgb & 255;
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            const textColor = brightness > 128 ? '#000000' : '#ffffff';
+            return { bg: color, text: textColor };
+        }
+    }
+    
+    return { bg: '#0A000A', text: '#ffffff' };
+}
+
+const PRECIP_COLOR_MAP = [
+  { precip: 0, color: '#FF8835' },
+  { precip: 0.5, color: '#D5FF3C' },
+  { precip: 2, color: '#A0FF47' },
+  { precip: 3, color: '#A0FF47' },
+  { precip: 4, color: '#A0FF47' },
+  { precip: 5, color: '#A0FF47' },
+  { precip: 6, color: '#A0FF47' },
+  { precip: 7, color: '#A0FF47' },
+  { precip: 8, color: '#A0FF47' },
+  { precip: 9, color: '#69FF60' },
+  { precip: 10, color: '#69FF60' },
+  { precip: 15, color: '#37FF8E' },
+  { precip: 20, color: '#0AFFBE' },
+  { precip: 25, color: '#00FFFF' },
+  { precip: 30, color: '#1CFFFF' },
+  { precip: 35, color: '#1CFFFF' },
+  { precip: 40, color: '#28D2FF' },
+  { precip: 45, color: '#28A9FF' },
+  { precip: 50, color: '#2894FF' },
+  { precip: 55, color: '#2894FF' },
+  { precip: 60, color: '#A826FF' },
+  { precip: 65, color: '#A826FF' },
+  { precip: 70, color: '#C800FF' },
+  { precip: 75, color: '#E600FF' },
+  { precip: 80, color: '#FF00FF' },
+  { precip: 85, color: '#F000F0' },
+  { precip: 90, color: '#DC00DC' },
+  { precip: 95, color: '#BE00BE' },
+  { precip: 100, color: '#820082' },
+  { precip: 110, color: '#460046' },
+  { precip: 120, color: '#0A000A' }
+];
+
+function getPrecipitationColor(precip) {
+    if (precip === null || precip === undefined || isNaN(precip)) {
+        return { bg: '#1e293b', text: '#f1f5f9' };
+    }
+    
+    for (let i = PRECIP_COLOR_MAP.length - 1; i >= 0; i--) {
+        if (precip >= PRECIP_COLOR_MAP[i].precip) {
+            const color = PRECIP_COLOR_MAP[i].color;
+            const rgb = parseInt(color.slice(1), 16);
+            const r = (rgb >> 16) & 255;
+            const g = (rgb >> 8) & 255;
+            const b = rgb & 255;
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            const textColor = brightness > 128 ? '#000000' : '#ffffff';
+            return { bg: color, text: textColor };
+        }
+    }
+    return { bg: '#FF8835', text: '#000000' };
+}
+
+const WIND_COLOR_MAP = [
+  { wind: 0, color: '#FF8835' },
+  { wind: 20, color: '#69FF60' },
+  { wind: 36, color: '#DDFF60' },
+  { wind: 54, color: '#F0A105' },
+  { wind: 72, color: '#FF502F' },
+  { wind: 90, color: '#FF0000' },
+  { wind: 108, color: '#FF0000' },
+  { wind: 126, color: '#640000' }
+];
+
+function getWindColor(wind) {
+    if (wind === null || wind === undefined || isNaN(wind)) {
+        return { bg: '#1e293b', text: '#f1f5f9' };
+    }
+    
+    for (let i = WIND_COLOR_MAP.length - 1; i >= 0; i--) {
+        if (wind >= WIND_COLOR_MAP[i].wind) {
+            const color = WIND_COLOR_MAP[i].color;
+            const rgb = parseInt(color.slice(1), 16);
+            const r = (rgb >> 16) & 255;
+            const g = (rgb >> 8) & 255;
+            const b = rgb & 255;
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            const textColor = brightness > 128 ? '#000000' : '#ffffff';
+            return { bg: color, text: textColor };
+        }
+    }
+    return { bg: '#FF8835', text: '#000000' };
+}
+
+const PROB_COLOR_MAP = [
+  { prob: 0, color: '#EFF6FF' },
+  { prob: 10, color: '#DBEAFE' },
+  { prob: 20, color: '#BEDBFF' },
+  { prob: 30, color: '#8EC5FF' },
+  { prob: 40, color: '#51A2FF' },
+  { prob: 50, color: '#2B7FFF' },
+  { prob: 60, color: '#155DFC' },
+  { prob: 70, color: '#1447E6' },
+  { prob: 80, color: '#193CB8' },
+  { prob: 90, color: '#1C398E' },
+  { prob: 100, color: '#162456' }
+];
+
+function getProbColor(prob) {
+    if (prob === null || prob === undefined || isNaN(prob)) {
+        return { bg: '#1e293b', text: '#f1f5f9' };
+    }
+    
+    for (let i = PROB_COLOR_MAP.length - 1; i >= 0; i--) {
+        if (prob >= PROB_COLOR_MAP[i].prob) {
+            const color = PROB_COLOR_MAP[i].color;
+            const rgb = parseInt(color.slice(1), 16);
+            const r = (rgb >> 16) & 255;
+            const g = (rgb >> 8) & 255;
+            const b = rgb & 255;
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            const textColor = brightness > 128 ? '#000000' : '#ffffff';
+            return { bg: color, text: textColor };
+        }
+    }
+    return { bg: '#FF8835', text: '#000000' };
+}
+
+const SUNSHINE_COLOR_MAP = [
+  { sunshine: 0, color: '#FFFFFF' },
+  { sunshine: 7200, color: '#FFFDCC' },
+  { sunshine: 14400, color: '#FFFDB2' },
+  { sunshine: 21600, color: '#FFFC99' },
+  { sunshine: 28800, color: '#FFFB65' },
+  { sunshine: 36000, color: '#FFFA32' },
+  { sunshine: 43200, color: '#FFF900' }
+];
+
+function getSunshineColor(sunshine) {
+    if (sunshine === null || sunshine === undefined || isNaN(sunshine)) {
+        return { bg: '#1e293b', text: '#f1f5f9' };
+    }
+    
+    for (let i = SUNSHINE_COLOR_MAP.length - 1; i >= 0; i--) {
+        if (sunshine >= SUNSHINE_COLOR_MAP[i].sunshine) {
+            const color = SUNSHINE_COLOR_MAP[i].color;
+            const rgb = parseInt(color.slice(1), 16);
+            const r = (rgb >> 16) & 255;
+            const g = (rgb >> 8) & 255;
+            const b = rgb & 255;
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            const textColor = brightness > 128 ? '#000000' : '#ffffff';
+            return { bg: color, text: textColor };
+        }
+    }
+    return { bg: '#FF8835', text: '#000000' };
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    return `${day}.${month}`;
+}
+
+function formatSunshine(seconds) {
+    if (seconds === null || seconds === undefined) return '-';
+    const hours = Math.round(seconds / 3600);
+    return hours.toString();
+}
+
+const API_CONFIG = {
+  BASE_URL: 'https://marsentim.com/weather/data.php',
+  KEY: null
+};
+
+async function fetchKey() {
+  const response = await fetch("key.php", { credentials: "include" });
+  if (!response.ok) throw new Error("Failed to fetch key: " + response.status);
+
+  const data = await response.json();
+  API_CONFIG.KEY = data.key;
+}
+
+fetchKey();
+
+async function fetchAllModelsData(lat, lon) {
+    const API_URL = `${API_CONFIG.BASE_URL}?lat=${lat}&lon=${lon}&key=${API_CONFIG.KEY}`;
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+    loading.style.display = 'block';
+    error.style.display = 'none';
+    try {
+        const response = await fetch(API_URL);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        loading.style.display = 'none';
+        if (!data || !Array.isArray(data) || data.length === 0) {
+            throw new Error('Invalid data format received');
+        }
+        return data[0];
+    } catch (err) {
+        loading.style.display = 'none';
+        error.style.display = 'block';
+        error.textContent = 'Error loading weather data: ' + err.message;
+        console.error('Fetch error:', err);
+        return null;
+    }
+}
+
+function displayForecast(data, days) {
+    if (!data || !data.daily) {
+        console.error('No data to display');
+        return;
+    }
+    const container = document.getElementById('forecastContainer');
+    container.innerHTML = '';
+    const dates = data.daily.time.slice(0, days);
+    PARAMETERS.forEach(param => {
+        const block = document.createElement('div');
+        block.className = 'parameter-block';
+        const title = document.createElement('div');
+        title.className = 'parameter-title';
+        title.textContent = param.label;
+        block.appendChild(title);
+        const table = document.createElement('table');
+        table.className = 'weather-table';
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        const modelHeader = document.createElement('th');
+        modelHeader.className = 'model-name';
+        modelHeader.textContent = 'Model';
+        headerRow.appendChild(modelHeader);
+        dates.forEach(date => {
+            const dateHeader = document.createElement('th');
+            dateHeader.className = 'date-header';
+            dateHeader.textContent = formatDate(date);
+            headerRow.appendChild(dateHeader);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+        MODELS.forEach(model => {
+            const row = document.createElement('tr');
+            const modelCell = document.createElement('td');
+            modelCell.className = 'model-name';
+            modelCell.textContent = model.name;
+            row.appendChild(modelCell);
+            const dataKey = `${param.key}_${model.key}`;
+            if (data.daily[dataKey]) {
+                const values = data.daily[dataKey].slice(0, days);
+                values.forEach((value, index) => {
+                    const cell = document.createElement('td');
+                    cell.className = 'value-cell';
+                    if (value !== null && value !== undefined && !isNaN(value)) {
+                        if (param.type === 'temp') {
+                            cell.textContent = value.toFixed(1);
+                            cell.className += 'temp-cell';
+                            const colors = getTemperatureColor(value);
+                            cell.style.backgroundColor = colors.bg;
+                            cell.style.color = colors.text;
+                        } else if (param.type === 'wind') {
+                            cell.textContent = (value / 3.6).toFixed(0);
+                            cell.className += 'wind-cell';
+                            const colors = getWindColor(value);
+                            cell.style.backgroundColor = colors.bg;
+                            cell.style.color = colors.text;
+                        } else if (param.type === 'precip') {
+                            cell.textContent = value.toFixed(0);
+                            cell.className += 'precip-cell';
+                            const colors = getPrecipitationColor(value);
+                            cell.style.backgroundColor = colors.bg;
+                            cell.style.color = colors.text;
+                        } else if (param.type === 'prob') {
+                            cell.textContent = Math.round(value);
+                            cell.className += 'prob-cell';
+                            const colors = getProbColor(value);
+                            cell.style.backgroundColor = colors.bg;
+                            cell.style.color = colors.text;
+                        }
+                          else if (param.type === 'sunshine') {
+                            cell.textContent = formatSunshine(value);
+                            cell.className += 'sunshine-cell';
+                            const colors = getSunshineColor(value);
+                            cell.style.backgroundColor = colors.bg;
+                            cell.style.color = colors.text;
+                        } else {
+                            cell.textContent = Math.round(value);
+                        }
+                    } else {
+                        cell.innerHTML = '<span class="no-data">-</span>';
+                    }
+                    row.appendChild(cell);
+                });
+                for (let i = values.length; i < days; i++) {
+                    const cell = document.createElement('td');
+                    cell.className = 'value-cell';
+                    cell.innerHTML = '<span class="no-data">-</span>';
+                    row.appendChild(cell);
+                }
+            } else {
+                for (let i = 0; i < days; i++) {
+                    const cell = document.createElement('td');
+                    cell.className = 'value-cell';
+                    cell.innerHTML = '<span class="no-data">-</span>';
+                    row.appendChild(cell);
+                }
+            }
+            tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+        block.appendChild(table);
+        container.appendChild(block);
+    });
+}
+
+function updateLocationInfo(lat, lon) {
+    document.getElementById('locationInfo').textContent = `${lat}°, ${lon}°`;
+}
+
+
+async function updateWeatherData() {
+    const lat = parseFloat(document.getElementById('latInput').value);
+    const lon = parseFloat(document.getElementById('lonInput').value);
+    const days = 16;
+    
+    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        const error = document.getElementById('error');
+        error.style.display = 'block';
+        error.textContent = 'Please enter valid latitude (-90 to 90) and longitude (-180 to 180) values.';
+        return;
+    }
+    
+    currentLat = lat;
+    currentLon = lon;
+    currentDays = days;
+    
+    updateLocationInfo(lat, lon);
+    
+    const data = await fetchAllModelsData(lat, lon);
+    if (data) {
+        displayForecast(data, days);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('latInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') updateWeatherData();
+    });
+    
+    document.getElementById('lonInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') updateWeatherData();
+    });
+});
+</script>
+</body>
+</html>
