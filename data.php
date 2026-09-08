@@ -1,5 +1,4 @@
 <?php
-session_start();
 
 // ----------------- cURL helpers -----------------
 function curl_get($url, $cookieJar, $headers = []) {
