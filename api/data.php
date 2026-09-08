@@ -20,7 +20,6 @@ function curl_get($url, $cookieJar, $headers = []) {
     if (!empty($headers)) curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     $res = curl_exec($ch);
     $err = curl_error($ch);
-    curl_close($ch);
     if ($res === false) throw new Exception("cURL error: $err");
     return $res;
 }
@@ -36,7 +35,6 @@ function curl_post($url, $postFields, $cookieJar, $headers = []) {
     if (!empty($headers)) curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     $res = curl_exec($ch);
     $err = curl_error($ch);
-    curl_close($ch);
     if ($res === false) throw new Exception("cURL error: $err");
     return $res;
 }
