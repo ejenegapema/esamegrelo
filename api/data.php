@@ -1,5 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
+header('Content-Type: application/json; charset=utf-8');
+
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
+
 // ----------------- cURL helpers -----------------
 function curl_get($url, $cookieJar, $headers = []) {
     $ch = curl_init($url);
