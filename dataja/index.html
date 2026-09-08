@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Forecast</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header-info {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #1e293b;
+    border-radius: 12px;
+}
+
+.header-info h1 {
+    color: #f1f5f9;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    font-size: 32px;
+}
+
+.header-info .info-line {
+    color: #cbd5e1;
+    font-size: 18px;
+    font-weight: 500;
+    margin: 5px 0;
+}
+
+.input-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #1e293b;
+    border-radius: 12px;
+    flex-wrap: nowrap;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: auto;
+}
+
+.input-group label {
+    color: #f1f5f9;
+    font-weight: 600;
+    font-size: 16px;
+    white-space: nowrap;
+    width: auto;
+}
+
+.input-group input {
+    padding: 8px 12px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 8px;
+    font-size: 16px;
+    width: auto;
+    font-weight: 500;
+    margin-right: 12px;
+}
+
+.input-group select {
+    padding: 8px 12px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    width: auto;
+    margin-right: 12px;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.update-button {
+    padding: 8px 24px;
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.update-button:hover {
+    background: #2563eb;
+}
+
+.loading-message {
+    text-align: center;
+    color: #3b82f6;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 20px;
+    display: none;
+}
+
+.error-message {
+    color: #ef4444;
+    padding: 12px;
+    background: #2e1f1f;
+    border: 1px solid #7f1d1d;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+    display: none;
+}
+
+.table-container {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    overflow-x: auto;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    width: 100%;
+}
+
+.weather-table {
+    border-collapse: collapse;
+    font-size: 13px;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.weather-table th {
+    background: #334155;
+    color: #f1f5f9;
+    padding: 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid #475569;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    height: 63px;
+    vertical-align: middle;
+    line-height: 1.2;
+}
+
+.weather-table td {
+    padding: 8px;
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid #475569;
+    background: #1e293b;
+    color: #f1f5f9;
+    font-size: 15px;
+    height: 63px;
+    vertical-align: middle;
+}
+
+.weather-table .time-col {
+    background: #374151 !important;
+    color: #f1f5f9 !important;
+    font-weight: 600;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    font-size: 14px;
+    width: 10%;
+}
+
+.weather-table th:not(.time-col),
+.weather-table td:not(.time-col) {
+    width: 10%;
+}
+
+.wind-arrow {
+    font-size: 15px;
+    display: inline-block;
+    margin-right: 2px;
+}
+
+.date-separator {
+    background: #64748b !important;
+    color: #f1f5f9 !important;
+    font-weight: 700;
+    text-align: center;
+    font-size: 14px;
+}
+
+.stat-row {
+    background: #2d3748 !important;
+    font-weight: 700;
+}
+
+.stat-row td {
+    font-size: 15px;
+}
+
+.stat-row.max {
+    background: #4a1f1f !important;
+}
+
+.stat-row.mean {
+    background: #1f4a1f !important;
+}
+
+.stat-row.min {
+    background: #1f1f4a !important;
+}
+
+.stat-label {
+    background: #475569 !important;
+    color: #f1f5f9 !important;
+    font-weight: 700;
+    font-size: 14px;
+    text-align: center;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header-info">
+        <h1>Weather Forecast</h1>
+        <div class="info-line">Location: <span id="locationInfo">42.5°, 41.9°</span></div>
+        <div class="info-line">Model: <span id="modelInfo">ECMWF AIFS</span></div>
+        <div class="info-line">Period: <span id="periodInfo">7 days</span></div>
+    </div>
+
+    <div class="input-container">
+        <div class="input-group">
+            <label for="latInput">Latitude:</label>
+            <input type="number" id="latInput" value="42.5" step="0.1" min="-90" max="90">
+        </div>
+        <div class="input-group">
+            <label for="lonInput">Longitude:</label>
+            <input type="number" id="lonInput" value="41.9" step="0.1" min="-180" max="180">
+        </div>
+        <div class="input-group">
+            <label for="daysSelect">Days:</label>
+            <select id="daysSelect">
+                <option value="1">1 day</option>
+                <option value="2">2 days</option>
+                <option value="3">3 days</option>
+                <option value="4">4 days</option>
+                <option value="5">5 days</option>
+                <option value="6">6 days</option>
+                <option value="7" selected>7 days</option>
+                <option value="8">8 days</option>
+                <option value="9">9 days</option>
+                <option value="10">10 days</option>
+                <option value="11">11 days</option>
+                <option value="12">12 days</option>
+                <option value="13">13 days</option>
+                <option value="14">14 days</option>
+                <option value="15">15 days</option>
+                <option value="16">16 days</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label for="modelSelect">Model:</label>
+            <select id="modelSelect">
+                <option value="ecmwf_aifs" selected>ECMWF AIFS</option>
+                <option value="ecmwf_ifs">ECMWF IFS</option>
+                <option value="gfs">GFS</option>
+                <option value="gfs_graphcast">GFS GraphCast</option>
+                <option value="icon">ICON</option>
+                <option value="gem">GEM</option>
+                <option value="ukmo">UKMO</option>
+                <option value="arpege">ARPEGE</option>
+            </select>
+        </div>
+        <button class="update-button" onclick="updateWeatherData()">Update</button>
+    </div>
+
+    <div id="loading" class="loading-message">
+        Loading weather data...
+    </div>
+
+    <div id="error" class="error-message"></div>
+
+    <div id="tableContainer" class="table-container">
+        <table class="weather-table" id="weatherTable">
+            <thead>
+                <tr>
+                    <th class="time-col">Time</th>
+                    <th>T2m<br>(°C)</th>
+                    <th>T925<br>(°C)</th>
+                    <th>T850<br>(°C)</th>
+                    <th>RH 2m<br>(%)</th>
+                    <th>Cloud<br>Cover<br>(%)</th>
+                    <th>Precip<br>Sum<br>(mm)</th>
+                    <th>Pressure<br>MSL<br>(hPa)</th>
+                    <th>Wind<br>Speed<br>10 m<br>(m/s)</th>
+                    <th>Wind<br>Dir<br>10 m</th>
+                </tr>
+            </thead>
+            <tbody id="weatherTableBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let currentLat = 42.5;
+let currentLon = 41.9;
+let currentModel = 'ecmwf_aifs';
+let currentDays = 16;
+
+const MODEL_NAMES = {
+    'ecmwf_aifs': 'ECMWF AIFS',
+    'ecmwf_ifs': 'ECMWF IFS',
+    'gfs': 'GFS Global',
+    'gfs_graphcast': 'GFS GraphCast',
+    'icon': 'ICON',
+    'gem': 'GEM',
+    'arpege': 'ARPEGE',
+    'ukmo': 'UKMO'
+};
+
+const ORDERED_KEYS = [
+    'temperature_2m',
+    'temperature_925hPa',
+    'temperature_850hPa',
+    'relative_humidity_2m',
+    'cloud_cover',
+    'precipitation',
+    'pressure_msl',
+    'wind_speed_10m',
+    'wind_direction_10m'
+];
+
+function formatDateTime(dateTimeString) {
+    const date = new Date(dateTimeString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const hour = date.getHours().toString().padStart(2, '0');
+    return day + '.' + month + ' ' + hour + ':00';
+}
+
+function formatDate(dateTimeString) {
+    const date = new Date(dateTimeString);
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+function convertWindDirection(degrees) {
+    if (degrees === null || degrees === undefined || isNaN(degrees)) return 'N/A';
+    
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const arrows = ['↓', '↙', '←', '↖', '↑', '↗', '→', '↘'];
+    
+    const index = Math.round(degrees / 45) % 8;
+    return '<span class="wind-arrow">' + arrows[index] + '</span>' + directions[index];
+}
+
+function convertKmhToMs(kmh) {
+    if (kmh === null || kmh === undefined || isNaN(kmh)) return null;
+    return kmh / 3.6;
+}
+
+function formatValue(value, precision, isInteger) {
+    precision = precision || 1;
+    isInteger = isInteger || false;
+    if (value === null || value === undefined) return 'N/A';
+    if (isInteger) return Math.round(value).toString();
+    return typeof value === 'number' ? value.toFixed(precision) : value;
+}
+
+function calculateStats(values) {
+    const validValues = values.filter(function(v) { 
+        return v !== null && v !== undefined && !isNaN(v); 
+    });
+    if (validValues.length === 0) return { min: 'N/A', max: 'N/A', mean: 'N/A' };
+    
+    const min = Math.min.apply(Math, validValues);
+    const max = Math.max.apply(Math, validValues);
+    const mean = validValues.reduce(function(a, b) { return a + b; }, 0) / validValues.length;
+    
+    return {
+        min: min,
+        max: max,
+        mean: mean,
+        minFormatted: min.toFixed(1),
+        maxFormatted: max.toFixed(1),
+        meanFormatted: mean.toFixed(1)
+    };
+}
+
+function createTable(data) {
+    const tbody = document.getElementById('weatherTableBody');
+    tbody.innerHTML = '';
+    const hourly = data.hourly;
+    
+    const cumulativePrecipitation = [];
+    let precipSum = 0;
+    for (let i = 0; i < hourly.time.length; i++) {
+        precipSum += (hourly.precipitation[i] || 0);
+        cumulativePrecipitation.push(precipSum);
+    }
+    
+    const filteredIndices = [];
+    for (let i = 0; i < hourly.time.length; i += 3) {
+        filteredIndices.push(i);
+    }
+    
+    const allValues = {};
+    ORDERED_KEYS.forEach(function(key) {
+        allValues[key] = [];
+    });
+    
+    let lastDate = null;
+    
+    for (let idx = 0; idx < filteredIndices.length; idx++) {
+        const i = filteredIndices[idx];
+        const currentRowDate = formatDate(hourly.time[i]);
+        
+        if (lastDate !== currentRowDate) {
+            const dateRow = document.createElement('tr');
+            const dateSeparator = document.createElement('td');
+            dateSeparator.className = 'date-separator';
+            dateSeparator.colSpan = ORDERED_KEYS.length + 1;
+            dateSeparator.textContent = currentRowDate;
+            dateRow.appendChild(dateSeparator);
+            tbody.appendChild(dateRow);
+            lastDate = currentRowDate;
+        }
+        
+        const row = document.createElement('tr');
+        
+        const timeCell = document.createElement('td');
+        timeCell.className = 'time-col';
+        timeCell.textContent = formatDateTime(hourly.time[i]);
+        row.appendChild(timeCell);
+        
+        for (let colIndex = 0; colIndex < ORDERED_KEYS.length; colIndex++) {
+            const key = ORDERED_KEYS[colIndex];
+            const cell = document.createElement('td');
+            
+            let value = hourly[key][i];
+            let displayValue = value;
+            let formattedValue;
+            
+            if (key === 'precipitation') {
+                displayValue = cumulativePrecipitation[i];
+                formattedValue = formatValue(displayValue, 1);
+                cell.textContent = formattedValue;
+                allValues[key].push(displayValue);
+            } else if (key.indexOf('temperature') !== -1) {
+                formattedValue = formatValue(value, 1);
+                cell.textContent = formattedValue;
+                allValues[key].push(value);
+            } else if (key === 'pressure_msl') {
+                formattedValue = formatValue(value, 1, true);
+                cell.textContent = formattedValue;
+                allValues[key].push(value);
+            } else if (key === 'cloud_cover' || key === 'relative_humidity_2m') {
+                formattedValue = formatValue(value, 1, true);
+                cell.textContent = formattedValue;
+                allValues[key].push(value);
+            } else if (key === 'wind_direction_10m') {
+                formattedValue = convertWindDirection(value);
+                cell.innerHTML = formattedValue;
+                allValues[key].push(value);
+            } else if (key === 'wind_speed_10m') {
+                const msValue = convertKmhToMs(value);
+                formattedValue = formatValue(msValue, 1, true);
+                cell.textContent = formattedValue;
+                allValues[key].push(msValue);
+            } else {
+                formattedValue = formatValue(value, 1);
+                cell.textContent = formattedValue;
+                allValues[key].push(value);
+            }
+            
+            row.appendChild(cell);
+        }
+        
+        tbody.appendChild(row);
+    }
+    
+    const statSeparatorRow = document.createElement('tr');
+    const statSeparator = document.createElement('td');
+    statSeparator.className = 'date-separator';
+    statSeparator.colSpan = ORDERED_KEYS.length + 1;
+    statSeparator.textContent = 'Statistics';
+    statSeparatorRow.appendChild(statSeparator);
+    tbody.appendChild(statSeparatorRow);
+    
+    const statTypes = ['max', 'mean', 'min'];
+    statTypes.forEach(function(statType) {
+        const statRow = document.createElement('tr');
+        statRow.className = 'stat-row ' + statType;
+        
+        const labelCell = document.createElement('td');
+        labelCell.className = 'stat-label time-col';
+        labelCell.textContent = statType.charAt(0).toUpperCase() + statType.slice(1);
+        statRow.appendChild(labelCell);
+        
+        ORDERED_KEYS.forEach(function(key) {
+            const cell = document.createElement('td');
+            const stats = calculateStats(allValues[key]);
+            
+            if (key === 'wind_direction_10m') {
+                cell.textContent = 'N/A';
+            } else {
+                const isInteger = key === 'pressure_msl' || key === 'cloud_cover' || 
+                                key === 'relative_humidity_2m' || key === 'wind_speed_10m';
+                
+                let value;
+                if (statType === 'max') value = stats.max;
+                else if (statType === 'mean') value = stats.mean;
+                else if (statType === 'min') value = stats.min;
+                
+                cell.textContent = formatValue(value, 1, isInteger);
+            }
+            
+            statRow.appendChild(cell);
+        });
+        
+        tbody.appendChild(statRow);
+    });
+}
+
+const API_CONFIG = {
+  BASE_URL: 'https://marsentim.com/forecast/data.php',
+  KEY: null
+};
+
+async function fetchKey() {
+  const response = await fetch("key.php", { credentials: "include" });
+  if (!response.ok) throw new Error("Failed to fetch key: " + response.status);
+
+  const data = await response.json();
+  API_CONFIG.KEY = data.key;
+}
+
+fetchKey();
+
+function fetchWeatherData(lat, lon, model) {
+    const API_URL = `${API_CONFIG.BASE_URL}?lat=${lat}&lon=${lon}&model=${model}&key=${API_CONFIG.KEY}`;
+    
+    return new Promise(function(resolve, reject) {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', API_URL, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        resolve(data);
+                    } catch (error) {
+                        reject(new Error('Failed to parse JSON'));
+                    }
+                } else {
+                    reject(new Error('HTTP error! status: ' + xhr.status));
+                }
+            }
+        };
+        xhr.onerror = function() {
+            reject(new Error('Network error'));
+        };
+        xhr.send();
+    });
+}
+
+function updateLocationInfo(lat, lon) {
+    document.getElementById('locationInfo').textContent = `${lat}°, ${lon}°`;
+}
+
+function updateModelInfo(model) {
+    document.getElementById('modelInfo').textContent = MODEL_NAMES[model] || model;
+}
+
+function updatePeriodInfo(days) {
+    document.getElementById('periodInfo').textContent = days + ' day' + (days > 1 ? 's' : '');
+}
+
+function updateWeatherData() {
+    const lat = parseFloat(document.getElementById('latInput').value);
+    const lon = parseFloat(document.getElementById('lonInput').value);
+    const model = document.getElementById('modelSelect').value;
+    const days = parseInt(document.getElementById('daysSelect').value);
+    
+    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        const error = document.getElementById('error');
+        error.style.display = 'block';
+        error.textContent = 'Please enter valid latitude (-90 to 90) and longitude (-180 to 180) values.';
+        return;
+    }
+    
+    currentLat = lat;
+    currentLon = lon;
+    currentModel = model;
+    currentDays = days;
+    
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+    
+    loading.style.display = 'block';
+    error.style.display = 'none';
+    
+    updateLocationInfo(lat, lon);
+    updateModelInfo(model);
+    updatePeriodInfo(days);
+    
+    fetchWeatherData(lat, lon, model).then(function(data) {
+        const hoursToShow = days * 24;
+        const filteredData = {
+            ...data,
+            hourly: {}
+        };
+        
+        Object.keys(data.hourly).forEach(function(key) {
+            if (Array.isArray(data.hourly[key])) {
+                filteredData.hourly[key] = data.hourly[key].slice(0, hoursToShow);
+            } else {
+                filteredData.hourly[key] = data.hourly[key];
+            }
+        });
+        
+        createTable(filteredData);
+        loading.style.display = 'none';
+    }).catch(function(err) {
+        loading.style.display = 'none';
+        error.style.display = 'block';
+        error.textContent = 'Error loading weather data: ' + err.message;
+    });
+}
+
+document.getElementById('latInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') updateWeatherData();
+});
+document.getElementById('lonInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') updateWeatherData();
+});
+</script>
+</body>
+</html>
