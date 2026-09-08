@@ -1419,7 +1419,7 @@ body {
                 const to = formatDateForAPI(elements.toDate.value);
                 const station = elements.stationInput.value || '24688';
                 
-                const url = `${API_CONFIG.BASE_URL}data.php?fd=${from.dd}&fm=${from.mm}&fy=${from.yyyy}&ld=${to.dd}&lm=${to.mm}&ly=${to.yyyy}&station=${station}`;
+                const url = `${API_CONFIG.BASE_URL}api/data.php?fd=${from.dd}&fm=${from.mm}&fy=${from.yyyy}&ld=${to.dd}&lm=${to.mm}&ly=${to.yyyy}&station=${station}`;
                 
                 console.log('Fetching from URL:', url);
                 
