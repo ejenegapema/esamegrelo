@@ -134,7 +134,7 @@ function createEmptyChart() {
 }
 
 async function fetchData(lat1, lat2, lon1, lon2) {
-    const url = `https://marsentim.com/precipitation/data.php?lat1=${lat1}&lat2=${lat2}&lon1=${lon1}&lon2=${lon2}`;
+    const url = `https://isamegrelo.vercel.app/api/precipitation.php?lat1=${lat1}&lat2=${lat2}&lon1=${lon1}&lon2=${lon2}`;
     const res = await fetch(url);
     const json = await res.json();
     return json.data
