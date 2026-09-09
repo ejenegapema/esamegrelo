@@ -1,17 +1,3 @@
-/*
- * Esamegrelo — Vertical Temperature Heatmap
- * -------------------------------------------
- * Compatible with the existing heatmap/index.html
- *
- * Uses:
- *   - Plotly.js
- *   - Open-Meteo API
- *
- * Visual style:
- *   Matches the main Esamegrelo / forecast UI:
- *   dark navy background, slate panels, blue accent.
- */
-
 (() => {
   "use strict";
 
