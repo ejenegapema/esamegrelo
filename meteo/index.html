@@ -831,23 +831,8 @@ body {
         }
 
         const API_CONFIG = {
-            BASE_URL: 'https://marsentim.com/meteo/data.php',
-            KEY: null
+            BASE_URL: 'https://isamegrelo.vercel.app/api/meteo.php'
         };
-
-        async function fetchKey() {
-            try {
-                const response = await fetch("key.php", { credentials: "include" });
-                if (!response.ok) {
-                    throw new Error("Failed to fetch key: " + response.status);
-                }
-                const data = await response.json();
-                API_CONFIG.KEY = data.key;
-                return data.key;
-            } catch (error) {
-                throw error;
-            }
-        }
 
         async function initializeCharts() {
             const loadingEl = document.getElementById('loading');
@@ -861,15 +846,13 @@ body {
                 
                 updateLocationDisplay();
                 
-                await fetchKey();
-                
                 const models = [
-                    'ecmwf_ifs025',
-                    'gfs_global',
+                    'ecmwf_ifs',
+                    'ncep_gfs_global',
                     'ecmwf_aifs025_single',
-                    'gfs_graphcast025',
-                    'icon_global',
-                    'gem_global',
+                    'ncep_aigfs025',
+                    'dwd_icon_global',
+                    'cmc_gem_gdps',
                     'ukmo_global_deterministic_10km',
                     'meteofrance_arpege_world',
                     'jma_gsm'
@@ -878,7 +861,7 @@ body {
                 const allModelData = [];
                 const fetchPromises = models.map(async (model) => {
                     try {
-                        const url = `${API_CONFIG.BASE_URL}?lat=${lat}&lon=${lon}&model=${model}&key=${API_CONFIG.KEY}`;
+                        const url = `${API_CONFIG.BASE_URL}?lat=${lat}&lon=${lon}&model=${model}`;
                         const response = await fetch(url);
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);
