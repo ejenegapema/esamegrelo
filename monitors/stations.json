@@ -1,0 +1,206 @@
+{
+    "source": "https:\/\/www.pogodaiklimat.ru\/monitors.php?id=rus",
+    "period": "Сводная таблица. Температура воздуха и осадки. Сентябрь 2026 г.",
+    "generated_at": "2026-09-09 21:12:37",
+    "stations": [
+        {
+            "wmo_id": "27612",
+            "index": "27612",
+            "name": "Москва",
+            "temp_avg": "15.1",
+            "temp_norm": "11.9",
+            "temp_deviation": "+1.0°",
+            "precip_fallen": "15",
+            "precip_norm": "66",
+            "precip_percent": "22"
+        },
+        {
+            "wmo_id": "26063",
+            "index": "26063",
+            "name": "Санкт-Петербург",
+            "temp_avg": "14.1",
+            "temp_norm": "12.4",
+            "temp_deviation": "-0.5°",
+            "precip_fallen": "48",
+            "precip_norm": "57",
+            "precip_percent": "85"
+        },
+        {
+            "wmo_id": "26850",
+            "index": "26850",
+            "name": "Минск",
+            "temp_avg": "15.2",
+            "temp_norm": "11.8",
+            "temp_deviation": "+1.2°",
+            "precip_fallen": "17",
+            "precip_norm": "52",
+            "precip_percent": "33"
+        },
+        {
+            "wmo_id": "33345",
+            "index": "33345",
+            "name": "Киев",
+            "temp_avg": "18.3",
+            "temp_norm": "14.9",
+            "temp_deviation": "+1.0°",
+            "precip_fallen": "8",
+            "precip_norm": "58",
+            "precip_percent": "13"
+        },
+        {
+            "wmo_id": "26702",
+            "index": "26702",
+            "name": "Калининград",
+            "temp_avg": "16.0",
+            "temp_norm": "13.5",
+            "temp_deviation": "+0.6°",
+            "precip_fallen": "64",
+            "precip_norm": "74",
+            "precip_percent": "87"
+        },
+        {
+            "wmo_id": "27459",
+            "index": "27459",
+            "name": "Нижний Новгород",
+            "temp_avg": "14.6",
+            "temp_norm": "11.7",
+            "temp_deviation": "+0.7°",
+            "precip_fallen": "7",
+            "precip_norm": "60",
+            "precip_percent": "11"
+        },
+        {
+            "wmo_id": "22113",
+            "index": "22113",
+            "name": "Мурманск",
+            "temp_avg": "9.3",
+            "temp_norm": "7.6",
+            "temp_deviation": "-0.1°",
+            "precip_fallen": "38",
+            "precip_norm": "54",
+            "precip_percent": "70"
+        },
+        {
+            "wmo_id": "22550",
+            "index": "22550",
+            "name": "Архангельск",
+            "temp_avg": "12.6",
+            "temp_norm": "8.8",
+            "temp_deviation": "+1.9°",
+            "precip_fallen": "84",
+            "precip_norm": "62",
+            "precip_percent": "135"
+        },
+        {
+            "wmo_id": "34730",
+            "index": "34730",
+            "name": "Ростов-на-Дону",
+            "temp_avg": "20.6",
+            "temp_norm": "17.1",
+            "temp_deviation": "+1.1°",
+            "precip_fallen": "12",
+            "precip_norm": "43",
+            "precip_percent": "28"
+        },
+        {
+            "wmo_id": "37099",
+            "index": "37099",
+            "name": "Сочи",
+            "temp_avg": "21.9",
+            "temp_norm": "20.5",
+            "temp_deviation": "-0.2°",
+            "precip_fallen": "7",
+            "precip_norm": "139",
+            "precip_percent": "5"
+        },
+        {
+            "wmo_id": "35121",
+            "index": "35121",
+            "name": "Оренбург",
+            "temp_avg": "20.1",
+            "temp_norm": "14.2",
+            "temp_deviation": "+3.3°",
+            "precip_fallen": "1",
+            "precip_norm": "26",
+            "precip_percent": "4"
+        },
+        {
+            "wmo_id": "28440",
+            "index": "28440",
+            "name": "Екатеринбург",
+            "temp_avg": "16.5",
+            "temp_norm": "10.4",
+            "temp_deviation": "+3.9°",
+            "precip_fallen": "1",
+            "precip_norm": "45",
+            "precip_percent": "3"
+        },
+        {
+            "wmo_id": "29638",
+            "index": "29638",
+            "name": "Новосибирск",
+            "temp_avg": "14.1",
+            "temp_norm": "10.3",
+            "temp_deviation": "+1.4°",
+            "precip_fallen": "4",
+            "precip_norm": "46",
+            "precip_percent": "8"
+        },
+        {
+            "wmo_id": "23078",
+            "index": "23078",
+            "name": "Норильск",
+            "temp_avg": "10.4",
+            "temp_norm": "4.4",
+            "temp_deviation": "+2.9°",
+            "precip_fallen": "30",
+            "precip_norm": "41",
+            "precip_percent": "72"
+        },
+        {
+            "wmo_id": "30710",
+            "index": "30710",
+            "name": "Иркутск",
+            "temp_avg": "12.4",
+            "temp_norm": "9.5",
+            "temp_deviation": "+0.4°",
+            "precip_fallen": "51",
+            "precip_norm": "53",
+            "precip_percent": "97"
+        },
+        {
+            "wmo_id": "24959",
+            "index": "24959",
+            "name": "Якутск",
+            "temp_avg": "10.9",
+            "temp_norm": "6.4",
+            "temp_deviation": "+0.8°",
+            "precip_fallen": "2",
+            "precip_norm": "30",
+            "precip_percent": "8"
+        },
+        {
+            "wmo_id": "20069",
+            "index": "20069",
+            "name": "Остров Визе",
+            "temp_avg": "1.6",
+            "temp_norm": "-1.5",
+            "temp_deviation": "+1.7°",
+            "precip_fallen": "5",
+            "precip_norm": "23",
+            "precip_percent": "20"
+        },
+        {
+            "wmo_id": "31960",
+            "index": "31960",
+            "name": "Владивосток",
+            "temp_avg": "18.1",
+            "temp_norm": "16.3",
+            "temp_deviation": "-0.1°",
+            "precip_fallen": "39",
+            "precip_norm": "103",
+            "precip_percent": "38"
+        }
+    ],
+    "missing": []
+}

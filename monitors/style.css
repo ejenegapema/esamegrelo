@@ -1,0 +1,354 @@
+/* ==========================================================================
+   style.css — дизайн страницы климатического монитора
+   ========================================================================== */
+
+:root {
+  --bg: #0b0f14;
+  --bg-elevated: #11161d;
+  --bg-card: #131922;
+  --border: #232b36;
+  --border-soft: #1a212b;
+
+  --text-primary: #e7edf5;
+  --text-secondary: #97a3b3;
+  --text-muted: #5d6a7a;
+
+  --accent: #4f8cff;
+  --accent-soft: rgba(79, 140, 255, 0.12);
+
+  --pos: #ff8a5c;
+  --pos-soft: rgba(255, 138, 92, 0.14);
+  --neg: #5ec8ff;
+  --neg-soft: rgba(94, 200, 255, 0.14);
+  --zero: #97a3b3;
+  --zero-soft: rgba(151, 163, 179, 0.12);
+  --na: #5d6a7a;
+
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo,
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: radial-gradient(circle at 20% -10%, #14202e 0%, var(--bg) 45%);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  min-height: 100vh;
+  padding: 40px 20px 60px;
+}
+
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+/* ---------------------------------- header --------------------------------- */
+
+.page-header {
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(79, 140, 255, 0.25);
+  padding: 6px 12px;
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
+
+.eyebrow .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+h1 {
+  font-size: clamp(24px, 3.4vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+  color: #ffffff;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 15px;
+  margin: 0;
+}
+
+.subtitle b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ------------------------------- meta strip -------------------------------- */
+
+.meta-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 22px 0 26px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  min-width: 150px;
+}
+
+.meta-item .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.meta-item .value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.meta-item .value a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.meta-item .value a:hover {
+  text-decoration: underline;
+}
+
+/* ----------------------------------- table ---------------------------------- */
+
+.table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 760px;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: right;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+thead th.col-name,
+thead th.col-id {
+  text-align: left;
+}
+
+thead th .unit {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  margin-top: 2px;
+}
+
+tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: right;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.col-id {
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  width: 70px;
+}
+
+.col-name {
+  text-align: left;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.col-name a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dashed var(--border);
+}
+
+.col-name a:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.col-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.cell-na {
+  color: var(--na);
+  font-style: normal;
+}
+
+/* deviation badges */
+
+.dev {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.dev-pos {
+  color: var(--pos);
+  background: var(--pos-soft);
+}
+
+.dev-neg {
+  color: var(--neg);
+  background: var(--neg-soft);
+}
+
+.dev-zero {
+  color: var(--zero);
+  background: var(--zero-soft);
+}
+
+.dev-na {
+  color: var(--na);
+  background: transparent;
+}
+
+/* --------------------------------- legend ---------------------------------- */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 18px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 7px;
+}
+
+.legend-swatch.pos {
+  background: var(--pos);
+}
+
+.legend-swatch.neg {
+  background: var(--neg);
+}
+
+.legend-swatch.zero {
+  background: var(--zero);
+}
+
+/* --------------------------------- footer ----------------------------------- */
+
+.page-footer {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.page-footer a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.page-footer a:hover {
+  color: var(--accent);
+}
+
+/* --------------------------------- responsive -------------------------------- */
+
+@media (max-width: 600px) {
+  body {
+    padding: 24px 12px 40px;
+  }
+
+  .meta-item {
+    flex: 1 1 45%;
+    min-width: 0;
+  }
+}
