@@ -16,7 +16,7 @@ const MODEL = "ncep_gfs_global";
 const TIMEZONE = "auto"; // local time at the requested coordinates
 
 // Pressure levels requested, ordered from the ground up (hPa)
-const PRESSURE_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500];
+const PRESSURE_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300];
 
 const HOURLY_VARS = [
   "relative_humidity_2m",
@@ -120,14 +120,14 @@ function flatMinMax(arr2d) {
 function plotCrossSection(times, heights, temps, data, config) {
   const colorscale = makeColorscale();
   const [tmin, tmax] = flatMinMax(temps);
-
+  const reversedColorscale = colorscale.slice().reverse();
   // --- smooth heatmap + thin 2C contour lines ---
   const mainContour = {
     type: "contour",
     x: times,
     y: heights,
     z: temps,
-    colorscale,
+    colorscale: reversedColorscale,
     zmin: 0,
     zmax: 100,
     connectgaps: true,
