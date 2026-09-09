@@ -12,17 +12,17 @@
 // 1. CONFIGURATION
 // --------------------------------------------------------------------------
 
-const MODEL = "ecmwf_aifs025_single";
+const MODEL = "ncep_gfs_global";
 const TIMEZONE = "auto"; // local time at the requested coordinates
 
 // Pressure levels requested, ordered from the ground up (hPa)
 const PRESSURE_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500];
 
 const HOURLY_VARS = [
-  "temperature_2m",
-  ...PRESSURE_LEVELS.map((p) => `temperature_${p}hPa`),
+  "relative_humidity_2m",
+  ...PRESSURE_LEVELS.map((p) => `relative_humidity_${p}hPa`),
 ];
-const CURRENT_VARS = ["temperature_2m", "precipitation"];
+const CURRENT_VARS = ["relative_humidity_2m"];
 
 const API_URL = "https://api.open-meteo.com/v1/forecast";
 
