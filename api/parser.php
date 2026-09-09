@@ -2,10 +2,27 @@
 /**
  * Парсер климатического монитора pogodaiklimat.ru
  * Забирает сводную таблицу (температура/осадки за текущий месяц) для
- * заданного списка метеостанций, сохраняет данные в JSON и генерирует
- * итоговую HTML-страницу с таблицей (по шаблону template.html).
+ * заданного списка метеостанций.
  *
- * Запуск: php parser.php
+ * Работает в двух режимах:
+ *
+ *  1) CLI (php parser.php) — например, на своём сервере/VPS по cron:
+ *     скачивает данные, сохраняет stations.json и генерирует table.html
+ *     рядом со скриптом (нужен доступ на запись).
+ *
+ *  2) Web / serverless (Vercel, любой обычный HTTP-хостинг) — файловая
+ *     система там чаще всего доступна только на чтение, поэтому в этом
+ *     режиме скрипт ничего не пишет на диск: он забирает свежие данные
+ *     и сразу отдаёт готовую HTML-страницу (или JSON при ?format=json)
+ *     прямо в ответ на запрос.
+ *
+ * Деплой на Vercel (важно):
+ *   - Этот файл кладите в /api/parser.php — Vercel отдаст его по адресу
+ *     /api/parser (PHP-рантайм сам обрабатывает маршрут).
+ *   - style.css положите в корень проекта (или в /public) — то есть
+ *     РЯДОМ с /api, а не внутри него, чтобы Vercel отдавал его как
+ *     статический файл. Ниже, в STYLE_HREF, указан абсолютный путь
+ *     "/style.css" — поправьте, если разместите файл иначе.
  */
 
 declare(strict_types=1);
@@ -15,10 +32,13 @@ error_reporting(E_ALL & ~E_DEPRECATED);
 //  НАСТРОЙКИ
 // ==========================================================================
 
-const SOURCE_URL     = 'https://www.pogodaiklimat.ru/monitors.php?id=rus';
-const JSON_OUTPUT     = __DIR__ . '/stations.json';
-const HTML_TEMPLATE   = __DIR__ . '/template.html';
-const HTML_OUTPUT     = __DIR__ . '/table.html';
+const SOURCE_URL   = 'https://www.pogodaiklimat.ru/monitors.php?id=rus';
+const STYLE_HREF   = '/style.css'; // путь к style.css от корня сайта
+
+// Локальные файлы используются только в CLI-режиме (запись на диск)
+const JSON_OUTPUT   = __DIR__ . '/stations.json';
+const HTML_OUTPUT   = __DIR__ . '/table.html';
+const HTML_TEMPLATE = __DIR__ . '/template.html'; // если файла нет — используется встроенный шаблон ниже
 
 // Список станций, которые нужно выбрать из общей таблицы (порядок сохраняется в выводе)
 const TARGET_STATIONS = [
@@ -41,6 +61,108 @@ const TARGET_STATIONS = [
     'Остров Визе',
     'Владивосток',
 ];
+
+// Встроенный шаблон страницы — используется всегда в web/serverless-режиме
+// (чтобы скрипт не зависел от чтения соседних файлов на хостинге) и как
+// запасной вариант в CLI-режиме, если template.html не найден рядом.
+const EMBEDDED_TEMPLATE = <<<'HTML'
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Климатический монитор — выбранные станции</title>
+  <link rel="stylesheet" href="{{STYLE_HREF}}" />
+</head>
+<body>
+  <div class="page">
+
+    <header class="page-header">
+      <span class="eyebrow"><span class="dot"></span> Погода и климат · сводка</span>
+      <h1>Климатический монитор</h1>
+      <p class="subtitle">{{PERIOD}} &middot; данные по <b>{{TOTAL}}</b> выбранным метеостанциям</p>
+    </header>
+
+    <section class="meta-strip">
+      <div class="meta-item">
+        <span class="label">Обновлено</span>
+        <span class="value">{{GENERATED_AT}}</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Источник</span>
+        <span class="value"><a href="https://www.pogodaiklimat.ru/monitors.php?id=rus" target="_blank" rel="noopener noreferrer">pogodaiklimat.ru</a></span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Станций</span>
+        <span class="value">{{TOTAL}}</span>
+      </div>
+    </section>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-id">Индекс</th>
+              <th class="col-name">Станция</th>
+              <th>Т° сред.<span class="unit">°C</span></th>
+              <th>Т° норма<span class="unit">°C</span></th>
+              <th>Отклонение<span class="unit">от нормы</span></th>
+              <th>Осадки<span class="unit">мм</span></th>
+              <th>Норма<span class="unit">мм</span></th>
+              <th>% от нормы<span class="unit">осадков</span></th>
+            </tr>
+          </thead>
+          <tbody>
+{{TABLE_ROWS}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="legend-item"><span class="legend-swatch pos"></span> теплее нормы</span>
+      <span class="legend-item"><span class="legend-swatch neg"></span> холоднее нормы</span>
+      <span class="legend-item"><span class="legend-swatch zero"></span> около нормы</span>
+    </div>
+
+    <footer class="page-footer">
+      <span>Данные: pogodaiklimat.ru · сформировано автоматическим PHP-парсером</span>
+      <a href="https://www.pogodaiklimat.ru/monitor.php" target="_blank" rel="noopener noreferrer">Открыть климатический монитор →</a>
+    </footer>
+
+  </div>
+</body>
+</html>
+HTML;
+
+// ==========================================================================
+//  ЛОГИРОВАНИЕ (безопасно для CLI и web/serverless)
+// ==========================================================================
+//
+// STDOUT/STDERR — это константы, которые PHP определяет ТОЛЬКО в CLI SAPI.
+// На Vercel (и вообще на любом web/serverless рантайме) их не существует,
+// поэтому прямое fwrite(STDOUT, ...) там падает с Fatal error. Вне CLI
+// пишем в error_log() — это уходит в логи хостинга, а не в тело HTTP-ответа
+// (что важно: иначе служебные сообщения испортили бы HTML/JSON в ответе).
+
+function logLine(string $msg): void
+{
+    if (PHP_SAPI === 'cli') {
+        fwrite(STDOUT, $msg);
+    } else {
+        error_log(rtrim($msg));
+    }
+}
+
+function logError(string $msg): void
+{
+    if (PHP_SAPI === 'cli') {
+        fwrite(STDERR, $msg);
+    } else {
+        error_log(rtrim($msg));
+    }
+}
 
 // ==========================================================================
 //  1. ЗАГРУЗКА СТРАНИЦЫ
@@ -143,7 +265,6 @@ function parseStations(string $utf8Html): array
 {
     $dom = new DOMDocument();
     libxml_use_internal_errors(true);
-    // Явно укажем кодировку, чтобы DOMDocument не пытался угадывать её сам
     $dom->loadHTML(
         '<?xml encoding="utf-8">' . $utf8Html,
         LIBXML_NOERROR | LIBXML_NOWARNING
@@ -152,7 +273,6 @@ function parseStations(string $utf8Html): array
 
     $xpath = new DOMXPath($dom);
 
-    // Заголовок с указанием месяца/года ("Сводная таблица ... Сентябрь 2026 г.")
     $period = '';
     $h1Nodes = $xpath->query('//h1');
     if ($h1Nodes->length > 0) {
@@ -182,12 +302,10 @@ function parseStations(string $utf8Html): array
         }
 
         if (count($cells) < 3) {
-            // Похоже на строку-разделитель региона без данных станции — пропускаем
-            continue;
+            continue; // строка-разделитель региона без данных станции
         }
 
-        // Находим ячейку с названием станции, всё после неё — числовые колонки
-        $nameCellIndex = 1; // по умолчанию: [0]=индекс, [1]=название
+        $nameCellIndex = 1;
         foreach ($cells as $i => $c) {
             if ($c === $name) {
                 $nameCellIndex = $i;
@@ -231,10 +349,6 @@ function normalizeText(string $text): string
 //  3. ОТБОР НУЖНЫХ СТАНЦИЙ
 // ==========================================================================
 
-/**
- * Отбирает из общего списка станций только нужные, сохраняя порядок
- * из TARGET_STATIONS, и отдельно возвращает список ненайденных названий.
- */
 function filterTargetStations(array $allStations, array $targetNames): array
 {
     $byName = [];
@@ -316,65 +430,150 @@ function buildTableRowsHtml(array $stations): string
     return $out;
 }
 
+/**
+ * Собирает финальный HTML на основе шаблона. В CLI-режиме, если рядом
+ * лежит template.html, используется он (удобно для локальной правки
+ * вёрстки без изменения PHP). Иначе — встроенный шаблон.
+ */
+function renderFullHtml(array $vars): string
+{
+    $template = EMBEDDED_TEMPLATE;
+
+    if (PHP_SAPI === 'cli' && is_file(HTML_TEMPLATE)) {
+        $fileTemplate = @file_get_contents(HTML_TEMPLATE);
+        if ($fileTemplate !== false && $fileTemplate !== '') {
+            $template = $fileTemplate;
+        }
+    }
+
+    return strtr($template, $vars);
+}
+
 // ==========================================================================
-//  MAIN
+//  5. ОСНОВНАЯ ЛОГИКА (общая для CLI и web)
 // ==========================================================================
 
-function main(): int
+/**
+ * Загружает страницу-источник, парсит и отбирает нужные станции.
+ * Бросает исключение при любой ошибке — вызывающий код решает,
+ * как её показать (в CLI — в stderr, в web — как HTTP 502/JSON-ошибку).
+ */
+function fetchAndFilter(): array
+{
+    logLine("Загрузка страницы: " . SOURCE_URL . "\n");
+    $rawHtml  = fetchPage(SOURCE_URL);
+    $utf8Html = toUtf8($rawHtml);
+
+    logLine("Разбор сводной таблицы...\n");
+    $parsed = parseStations($utf8Html);
+    logLine('Всего станций найдено на странице: ' . count($parsed['stations']) . "\n");
+
+    $filtered = filterTargetStations($parsed['stations'], TARGET_STATIONS);
+    logLine('Отобрано станций из нашего списка: ' . count($filtered['stations']) . ' из ' . count(TARGET_STATIONS) . "\n");
+
+    if (!empty($filtered['missing'])) {
+        logLine("Не найдены на странице: " . implode(', ', $filtered['missing']) . "\n");
+    }
+
+    return [
+        'source'       => SOURCE_URL,
+        'period'       => $parsed['period'],
+        'generated_at' => date('c'),
+        'stations'     => $filtered['stations'],
+        'missing'      => $filtered['missing'],
+    ];
+}
+
+// ==========================================================================
+//  6a. CLI-РЕЖИМ — сохраняет stations.json и table.html на диск
+// ==========================================================================
+
+function runCli(): int
 {
     try {
-        fwrite(STDOUT, "Загрузка страницы: " . SOURCE_URL . "\n");
-        $rawHtml  = fetchPage(SOURCE_URL);
-        $utf8Html = toUtf8($rawHtml);
-
-        fwrite(STDOUT, "Разбор сводной таблицы...\n");
-        $parsed = parseStations($utf8Html);
-        fwrite(STDOUT, 'Всего станций найдено на странице: ' . count($parsed['stations']) . "\n");
-
-        $filtered = filterTargetStations($parsed['stations'], TARGET_STATIONS);
-        fwrite(STDOUT, 'Отобрано станций из нашего списка: ' . count($filtered['stations']) . ' из ' . count(TARGET_STATIONS) . "\n");
-
-        if (!empty($filtered['missing'])) {
-            fwrite(STDOUT, "Не найдены на странице: " . implode(', ', $filtered['missing']) . "\n");
-        }
-
-        $output = [
-            'source'       => SOURCE_URL,
-            'period'       => $parsed['period'],
-            'generated_at' => date('Y-m-d H:i:s'),
-            'stations'     => $filtered['stations'],
-            'missing'      => $filtered['missing'],
-        ];
+        $data = fetchAndFilter();
 
         file_put_contents(
             JSON_OUTPUT,
-            json_encode($output, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
+            json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
         );
-        fwrite(STDOUT, 'Данные сохранены в JSON: ' . JSON_OUTPUT . "\n");
+        logLine('Данные сохранены в JSON: ' . JSON_OUTPUT . "\n");
 
-        if (is_file(HTML_TEMPLATE)) {
-            $template = file_get_contents(HTML_TEMPLATE);
-            $rowsHtml = buildTableRowsHtml($filtered['stations']);
+        $html = renderFullHtml([
+            '{{STYLE_HREF}}'   => './style.css', // локально — рядом лежащий файл
+            '{{PERIOD}}'       => e($data['period']),
+            '{{GENERATED_AT}}' => e($data['generated_at']),
+            '{{TOTAL}}'        => (string) count($data['stations']),
+            '{{TABLE_ROWS}}'   => buildTableRowsHtml($data['stations']),
+        ]);
 
-            $finalHtml = strtr($template, [
-                '{{PERIOD}}'       => e($parsed['period']),
-                '{{GENERATED_AT}}' => e($output['generated_at']),
-                '{{TOTAL}}'        => (string) count($filtered['stations']),
-                '{{TABLE_ROWS}}'   => $rowsHtml,
-            ]);
+        file_put_contents(HTML_OUTPUT, $html);
+        logLine('HTML-страница с таблицей сгенерирована: ' . HTML_OUTPUT . "\n");
+        logLine("Готово.\n");
 
-            file_put_contents(HTML_OUTPUT, $finalHtml);
-            fwrite(STDOUT, 'HTML-страница с таблицей сгенерирована: ' . HTML_OUTPUT . "\n");
-        } else {
-            fwrite(STDOUT, "Внимание: шаблон " . HTML_TEMPLATE . " не найден, HTML-страница не сгенерирована.\n");
-        }
-
-        fwrite(STDOUT, "Готово.\n");
         return 0;
     } catch (Throwable $e) {
-        fwrite(STDERR, 'Ошибка: ' . $e->getMessage() . "\n");
+        logError('Ошибка: ' . $e->getMessage() . "\n");
         return 1;
     }
 }
 
-exit(main());
+// ==========================================================================
+//  6b. WEB / SERVERLESS-РЕЖИМ — отдаёт результат прямо в HTTP-ответ
+// ==========================================================================
+
+function runHttp(): void
+{
+    // Небольшое кэширование на стороне CDN/браузера, чтобы не дёргать
+    // источник при каждом заходе (данные меняются не чаще пары раз в час).
+    header('Cache-Control: public, s-maxage=1800, stale-while-revalidate=3600');
+
+    $format = isset($_GET['format']) && $_GET['format'] === 'json' ? 'json' : 'html';
+
+    try {
+        $data = fetchAndFilter();
+    } catch (Throwable $e) {
+        logError('Ошибка: ' . $e->getMessage() . "\n");
+        http_response_code(502);
+
+        if ($format === 'json') {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'error' => 'Не удалось получить данные с источника.',
+            ], JSON_UNESCAPED_UNICODE);
+        } else {
+            header('Content-Type: text/html; charset=utf-8');
+            echo '<!DOCTYPE html><meta charset="utf-8">'
+                . '<p style="font-family:sans-serif">Не удалось получить данные с источника. '
+                . 'Попробуйте обновить страницу через минуту.</p>';
+        }
+        return;
+    }
+
+    if ($format === 'json') {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        return;
+    }
+
+    $html = renderFullHtml([
+        '{{STYLE_HREF}}'   => STYLE_HREF,
+        '{{PERIOD}}'       => e($data['period']),
+        '{{GENERATED_AT}}' => e($data['generated_at']),
+        '{{TOTAL}}'        => (string) count($data['stations']),
+        '{{TABLE_ROWS}}'   => buildTableRowsHtml($data['stations']),
+    ]);
+
+    header('Content-Type: text/html; charset=utf-8');
+    echo $html;
+}
+
+// ==========================================================================
+//  MAIN
+// ==========================================================================
+
+if (PHP_SAPI === 'cli') {
+    exit(runCli());
+}
+
+runHttp();
