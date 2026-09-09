@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Temperature Cross-Section</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Vertical Temperature Cross-Section</h1>
+    <div id="controls">
+      <label>Lat <input id="lat" type="number" step="0.1" value="42.5"></label>
+      <label>Lon <input id="lon" type="number" step="0.1" value="42.0"></label>
+      <label>Hours <input id="hours" type="number" step="1" min="6" max="240" value="72"></label>
+      <button id="refresh">Refresh</button>
+      <span id="status"></span>
+    </div>
+  </header>
+
+  <div id="chart"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
