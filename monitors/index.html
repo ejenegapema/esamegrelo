@@ -12,7 +12,6 @@
     <h1 id="page-title">Температура воздуха и осадки</h1>
     <p class="subtitle" id="page-subtitle">Загрузка данных…</p>
   </header>
-
   <div class="table-card">
     <div class="table-scroll">
       <table>
@@ -20,7 +19,7 @@
           <tr>
             <th class="col-id">WMO ID</th>
             <th class="col-name">Станция</th>
-            <th>Т средн.<span class="unit">°C</span></th>
+            <th>Т средняя<span class="unit">°C</span></th>
             <th>Норма<span class="unit">°C</span></th>
             <th>Отклонение<span class="unit">от нормы</span></th>
             <th>Осадки<span class="unit">мм</span></th>
@@ -36,17 +35,13 @@
       </table>
     </div>
   </div>
-
   <footer class="page-footer">
     <span id="footer-source"></span>
     <span id="footer-generated"></span>
   </footer>
-
 </div>
-
 <script>
 const API_URL = "https://isamegrelo.vercel.app/api/monitors.php?format=json";
-
 function escapeHtml(str) {
   if (str === null || str === undefined) return "";
   return String(str)
@@ -85,7 +80,6 @@ async function loadData() {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
 
-    // Header / meta
     document.getElementById("page-title").textContent = data.period || "Сводная таблица. Температура воздуха и осадки";
     document.getElementById("page-subtitle").textContent =
       `Данные по ${(data.stations || []).length} станциям` +
@@ -102,7 +96,6 @@ async function loadData() {
 
     document.getElementById("meta-generated").textContent = formatDateTime(data.generated_at);
 
-    // Table rows
     const stations = data.stations || [];
     if (stations.length === 0) {
       tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted);">Нет данных</td></tr>`;
