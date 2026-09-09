@@ -16,7 +16,7 @@ $models = [
     "dwd_icon_global",
     "ecmwf_ifs",
     "ecmwf_aifs025_single",
-    "kma_gdps",
+    "cma_grapes_global",
     "ncep_aigfs025",
     "ncep_gfs_global",
     "jma_gsm",
