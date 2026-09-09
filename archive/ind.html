@@ -573,16 +573,14 @@ async function fetchAndPlot() {
         
         const urlLevel2 = `https://psl.noaa.gov/cgi-bin/data/timeseries/getdaily.pl?typeTS=2&tstype=0&id=&variable=tmax&variablencep=hgt&leveln=${level2}&variabletwentcv3=None&levelt3=2000&variabletwentcv2=None&levelt=2000&variablenclim=None&variableera5=None&levelera5=2000&lat1=${lat}&lon1=${lon}&mon1=1&mon2=12&ipos%5B1%5D=${startYear}&ipos%5B2%5D=${endYear}&anom=0&gettimevar=get_timeseries&ranktype=2&number=0&value=0&typeval=1&highlow=1&lineORbar=line&use0ref=no&Submit=Get+Dates%2FTimeseries`;
         
-        // Using CORS proxy
-        const corsProxy = 'https://corsproxy.io/?';
         
         // Fetch data
         console.log(`Fetching ${level1}mb data...`);
-        const responseLevel1 = await fetch(corsProxy + encodeURIComponent(urlLevel1));
+        const responseLevel1 = await fetch(urlLevel1);
         const textLevel1 = await responseLevel1.text();
         
         console.log(`Fetching ${level2}mb data...`);
-        const responseLevel2 = await fetch(corsProxy + encodeURIComponent(urlLevel2));
+        const responseLevel2 = await fetch(urlLevel2);
         const textLevel2 = await responseLevel2.text();
         
         // Parse data
