@@ -3,30 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Сводная таблица. Температура воздуха и осадки</title>
+<title>Температура воздуха и осадки</title>
 <link rel="stylesheet" href="https://isamegrelo.vercel.app/monitors/style.css">
 </head>
 <body>
 <div class="page">
   <header class="page-header">
-    <span class="eyebrow"><span class="dot"></span>Климатический монитор</span>
-    <h1 id="page-title">Сводная таблица. Температура воздуха и осадки</h1>
+    <h1 id="page-title">Температура воздуха и осадки</h1>
     <p class="subtitle" id="page-subtitle">Загрузка данных…</p>
   </header>
-  <div class="meta-strip">
-    <div class="meta-item">
-      <span class="label">Период</span>
-      <span class="value" id="meta-period">—</span>
-    </div>
-    <div class="meta-item">
-      <span class="label">Источник</span>
-      <span class="value" id="meta-source">—</span>
-    </div>
-    <div class="meta-item">
-      <span class="label">Обновлено</span>
-      <span class="value" id="meta-generated">—</span>
-    </div>
-  </div>
 
   <div class="table-card">
     <div class="table-scroll">
@@ -50,12 +35,6 @@
         </tbody>
       </table>
     </div>
-  </div>
-
-  <div class="legend">
-    <span class="legend-item"><span class="legend-swatch pos"></span>Теплее нормы</span>
-    <span class="legend-item"><span class="legend-swatch neg"></span>Холоднее нормы</span>
-    <span class="legend-item"><span class="legend-swatch zero"></span>Соответствует норме</span>
   </div>
 
   <footer class="page-footer">
@@ -122,14 +101,6 @@ async function loadData() {
     }
 
     document.getElementById("meta-generated").textContent = formatDateTime(data.generated_at);
-
-    // Footer
-    const footerSource = document.getElementById("footer-source");
-    if (data.source) {
-      footerSource.innerHTML = `Данные: <a href="${escapeHtml(data.source)}" target="_blank" rel="noopener">${escapeHtml(data.source)}</a>`;
-    }
-    document.getElementById("footer-generated").textContent =
-      "Сгенерировано: " + formatDateTime(data.generated_at);
 
     // Table rows
     const stations = data.stations || [];
