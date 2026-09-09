@@ -1,6 +1,5 @@
 <?php
 
-// ====== MODEL SHORT NAMES ======
 $MODEL_NAMES = ["dwd_icon_global" => "icon", "ecmwf_ifs" => "ecmwf_ifs", "ncep_gfs_global" => "gfs", "meteofrance_arpege_world" => "arpege", 
                 "ncep_aigfs025" => "aigfs", "cma_grapes_global"=> "cma", "cmc_gem_gdps" => "gem", "ecmwf_aifs025_single" => "ecmwf_aifs", "jma_gsm" => "jma"];
 
