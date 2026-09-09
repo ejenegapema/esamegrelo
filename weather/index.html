@@ -590,22 +590,11 @@ function formatSunshine(seconds) {
 }
 
 const API_CONFIG = {
-  BASE_URL: 'https://isamegrelo.vercel.app/api/weather.php',
-  KEY: null
+  BASE_URL: 'https://isamegrelo.vercel.app/api/weather.php'
 };
 
-async function fetchKey() {
-  const response = await fetch("key.php", { credentials: "include" });
-  if (!response.ok) throw new Error("Failed to fetch key: " + response.status);
-
-  const data = await response.json();
-  API_CONFIG.KEY = data.key;
-}
-
-fetchKey();
-
 async function fetchAllModelsData(lat, lon) {
-    const API_URL = `${API_CONFIG.BASE_URL}?lat=${lat}&lon=${lon}&key=${API_CONFIG.KEY}`;
+    const API_URL = `${API_CONFIG.BASE_URL}?lat=${lat}&lon=${lon}`;
     const loading = document.getElementById('loading');
     const error = document.getElementById('error');
     loading.style.display = 'block';
