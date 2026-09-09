@@ -20,7 +20,7 @@ $models = [
     "ncep_aigfs025",
     "ncep_gfs_global",
     "jma_gsm",
-    "gem_global",
+    "cmc_gem_gdps",
     "ukmo_global_deterministic_10km",
     "meteofrance_arpege_world"
 ];
