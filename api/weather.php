@@ -1,22 +1,4 @@
 <?php
-session_start();
-
-// ====== SECURITY CHECKS ======
-if (!isset($_GET['key'])) {
-    http_response_code(403);
-    echo "Access denied. Missing key.";
-    exit;
-}
-if (!isset($_SESSION['download_key']) || $_GET['key'] !== $_SESSION['download_key']) {
-    http_response_code(403);
-    echo "Access denied. Invalid key.";
-    exit;
-}
-if (time() > $_SESSION['key_expires']) {
-    http_response_code(403);
-    echo "Access denied. Key expired.";
-    exit;
-}
 
 // ====== PARAMETERS ======
 $lat = isset($_GET['lat']) ? floatval($_GET['lat']) : 42.5;
