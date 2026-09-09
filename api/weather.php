@@ -13,12 +13,12 @@ if ($lat < -90 || $lat > 90 || $lon < -180 || $lon > 180) {
 
 // ====== MODELS TO FETCH ======
 $models = [
-    "icon_global",
-    "ecmwf_ifs025",
+    "dwd_icon_global",
+    "ecmwf_ifs",
     "ecmwf_aifs025_single",
     "kma_gdps",
-    "gfs_graphcast025",
-    "gfs_global",
+    "ncep_aigfs025",
+    "ncep_gfs_global",
     "jma_gsm",
     "gem_global",
     "ukmo_global_deterministic_10km",
