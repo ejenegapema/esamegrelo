@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Geopotential Height Analysis</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+    color: #e2e8f0;
+    padding: 20px;
+    margin: 0;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 0.5rem;
+    font-size: 2rem;
+    background: linear-gradient(135deg, #00d4ff, #4ecdc4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+}
+
+.subtitle {
+    text-align: center;
+    color: #94a3b8;
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+}
+
+.controls {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.control-group {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 23, 42, 0.8);
+    padding: 8px 12px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+.input-group.level-group {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 30, 47, 0.8));
+    border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.input-group label {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.input-group input, .input-group select {
+    width: 70px;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(30, 30, 47, 0.8);
+    color: #e2e8f0;
+    font-family: 'Inter', sans-serif;
+}
+
+.input-group select {
+    width: 90px;
+    cursor: pointer;
+}
+
+.input-group input:focus, .input-group select:focus {
+    outline: none;
+    border-color: #00d4ff;
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+.level-indicator {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-left: 5px;
+}
+
+.level-1 {
+    background: rgba(0, 212, 255, 0.2);
+    color: #00d4ff;
+}
+
+.level-2 {
+    background: rgba(78, 205, 196, 0.2);
+    color: #4ecdc4;
+}
+
+button {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #00d4ff, #4ecdc4);
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 212, 255, 0.4);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.chart-container {
+    background: rgba(15, 23, 42, 0.8);
+    border-radius: 16px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    height: 500px;
+    position: relative;
+}
+
+.loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+    text-align: center;
+}
+
+.loading-spinner {
+    border: 3px solid rgba(0, 212, 255, 0.1);
+    border-radius: 50%;
+    border-top: 3px solid #00d4ff;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.stat-card {
+    background: rgba(15, 23, 42, 0.8);
+    padding: 15px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+.stat-label {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    color: #00d4ff;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.error-message {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    padding: 10px;
+    border-radius: 8px;
+    margin: 10px 0;
+    display: none;
+}
+
+.info-message {
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    color: #00d4ff;
+    padding: 10px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.separator {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.3), transparent);
+    margin: 1rem 0;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>Geopotential Height Analysis</h1>
+    <div class="subtitle" id="subtitle">850mb - 925mb Difference with 365-Day Rolling Mean</div>
+
+    <div class="control-group">
+        <div class="input-group level-group">
+            <label>Level 1:</label>
+            <select id="level1" onchange="updateSubtitle()">
+                <option value="1000">1000 mb</option>
+                <option value="925">925 mb</option>
+                <option value="850" selected>850 mb</option>
+                <option value="700">700 mb</option>
+                <option value="600">600 mb</option>
+                <option value="500">500 mb</option>
+                <option value="400">400 mb</option>
+                <option value="300">300 mb</option>
+                <option value="250">250 mb</option>
+                <option value="200">200 mb</option>
+                <option value="150">150 mb</option>
+                <option value="100">100 mb</option>
+                <option value="70">70 mb</option>
+                <option value="50">50 mb</option>
+                <option value="30">30 mb</option>
+                <option value="20">20 mb</option>
+                <option value="10">10 mb</option>
+            </select>
+            <span class="level-indicator level-1">Upper</span>
+        </div>
+        
+        <div class="input-group level-group">
+            <label>Level 2:</label>
+            <select id="level2" onchange="updateSubtitle()">
+                <option value="1000">1000 mb</option>
+                <option value="925" selected>925 mb</option>
+                <option value="850">850 mb</option>
+                <option value="700">700 mb</option>
+                <option value="600">600 mb</option>
+                <option value="500">500 mb</option>
+                <option value="400">400 mb</option>
+                <option value="300">300 mb</option>
+                <option value="250">250 mb</option>
+                <option value="200">200 mb</option>
+                <option value="150">150 mb</option>
+                <option value="100">100 mb</option>
+                <option value="70">70 mb</option>
+                <option value="50">50 mb</option>
+                <option value="30">30 mb</option>
+                <option value="20">20 mb</option>
+                <option value="10">10 mb</option>
+            </select>
+            <span class="level-indicator level-2">Lower</span>
+        </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="controls">
+        <div class="input-group">
+            <label>Latitude:</label>
+            <input type="number" id="lat" value="42.5" step="0.5" min="-90" max="90">
+        </div>
+        <div class="input-group">
+            <label>Longitude:</label>
+            <input type="number" id="lon" value="42" step="0.5" min="-180" max="180">
+        </div>
+        <div class="input-group">
+            <label>Start Year:</label>
+            <input type="number" id="startYear" value="2016" min="1948" max="2024">
+        </div>
+        <div class="input-group">
+            <label>End Year:</label>
+            <input type="number" id="endYear" value="2025" min="1948" max="2025">
+        </div>
+        <button id="fetchBtn" onclick="fetchAndPlot()">Load Data</button>
+    </div>
+
+    <div class="info-message">
+        Calculating: (Level 1 - Level 2) Geopotential Height with 365-day rolling mean
+    </div>
+
+    <div class="error-message" id="errorMessage"></div>
+
+    <div class="chart-container">
+        <canvas id="chart"></canvas>
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <div style="color: #00d4ff;">Loading data...</div>
+        </div>
+    </div>
+
+    <div class="stats" id="stats" style="display: none;">
+        <div class="stat-card">
+            <div class="stat-label">Current Value</div>
+            <div class="stat-value" id="currentValue">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Mean</div>
+            <div class="stat-value" id="meanValue">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Max</div>
+            <div class="stat-value" id="maxValue">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Min</div>
+            <div class="stat-value" id="minValue">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Std Dev</div>
+            <div class="stat-value" id="stdValue">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Trend</div>
+            <div class="stat-value" id="trendValue">-</div>
+        </div>
+    </div>
+</div>
+
+<script>
+let chart;
+
+// Update subtitle when levels change
+function updateSubtitle() {
+    const level1 = document.getElementById('level1').value;
+    const level2 = document.getElementById('level2').value;
+    document.getElementById('subtitle').textContent = 
+        `${level1}mb - ${level2}mb Difference with 365-Day Rolling Mean`;
+    
+    // Update chart label if it exists
+    if (chart && chart.data.datasets[0]) {
+        chart.data.datasets[0].label = `GPH Difference (${level1}mb - ${level2}mb) 365-Day Mean`;
+    }
+}
+
+// Initialize empty chart
+function createChart() {
+    const ctx = document.getElementById('chart').getContext('2d');
+    
+    // Create gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(0, 212, 255, 0.3)');
+    gradient.addColorStop(1, 'rgba(0, 212, 255, 0.01)');
+    
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'GPH Difference (850mb - 925mb) 365-Day Mean',
+                data: [],
+                borderColor: '#00d4ff',
+                backgroundColor: gradient,
+                fill: true,
+                borderWidth: 2,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointBackgroundColor: '#00d4ff',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointHoverBackgroundColor: '#ffffff',
+                pointHoverBorderColor: '#00d4ff',
+                pointHoverBorderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        color: '#94a3b8',
+                        font: {
+                            family: 'Inter',
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    titleColor: '#e2e8f0',
+                    bodyColor: '#94a3b8',
+                    borderColor: 'rgba(0, 212, 255, 0.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `Height Diff: ${context.parsed.y.toFixed(2)} m`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'month',
+                        displayFormats: {
+                            month: 'MMM yyyy'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#94a3b8',
+                        font: {
+                            family: 'Inter',
+                            size: 12
+                        },
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Height Difference (m)',
+                        color: '#94a3b8',
+                        font: {
+                            family: 'Inter',
+                            size: 14,
+                            weight: '500'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#94a3b8',
+                        font: {
+                            family: 'Inter',
+                            size: 12
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Calculate rolling mean
+function calculateRollingMean(data, window) {
+    const result = [];
+    for (let i = 0; i < data.length; i++) {
+        if (i < window - 1) {
+            result.push(null);
+        } else {
+            const windowData = data.slice(i - window + 1, i + 1);
+            const validData = windowData.filter(v => v !== null && !isNaN(v));
+            if (validData.length > 0) {
+                const sum = validData.reduce((a, b) => a + b, 0);
+                result.push(sum / validData.length);
+            } else {
+                result.push(null);
+            }
+        }
+    }
+    return result;
+}
+
+// Calculate standard deviation
+function calculateStdDev(values) {
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const squaredDiffs = values.map(v => Math.pow(v - mean, 2));
+    const avgSquaredDiff = squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
+    return Math.sqrt(avgSquaredDiff);
+}
+
+// Calculate trend (simple linear regression)
+function calculateTrend(values) {
+    const n = values.length;
+    const x = Array.from({length: n}, (_, i) => i);
+    const y = values;
+    
+    const sumX = x.reduce((a, b) => a + b, 0);
+    const sumY = y.reduce((a, b) => a + b, 0);
+    const sumXY = x.reduce((acc, xi, i) => acc + xi * y[i], 0);
+    const sumX2 = x.reduce((acc, xi) => acc + xi * xi, 0);
+    
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    return slope * 365; // Convert to per year
+}
+
+// Parse NOAA data
+function parseNOAAData(text) {
+    const regex = /(\d{4}),(\d{2}),(\d{2}),\s*([\d\.\-]+)/g;
+    const matches = [];
+    let match;
+    
+    while ((match = regex.exec(text)) !== null) {
+        const value = parseFloat(match[4]);
+        // Filter out missing values (-9999)
+        if (value !== -9999) {
+            matches.push({
+                date: new Date(`${match[1]}-${match[2]}-${match[3]}`),
+                value: value
+            });
+        }
+    }
+    
+    return matches;
+}
+
+// Fetch and process data
+async function fetchAndPlot() {
+    const btn = document.getElementById('fetchBtn');
+    const loading = document.getElementById('loading');
+    const errorDiv = document.getElementById('errorMessage');
+    
+    btn.disabled = true;
+    loading.style.display = 'block';
+    errorDiv.style.display = 'none';
+    
+    try {
+        const lat = document.getElementById('lat').value;
+        const lon = document.getElementById('lon').value;
+        const startYear = document.getElementById('startYear').value;
+        const endYear = document.getElementById('endYear').value;
+        const level1 = document.getElementById('level1').value;
+        const level2 = document.getElementById('level2').value;
+        
+        // Validate levels
+        if (level1 === level2) {
+            throw new Error('Please select different pressure levels');
+        }
+        
+        // Update subtitle
+        updateSubtitle();
+        
+        // Construct URLs with selected levels
+        const urlLevel1 = `https://psl.noaa.gov/cgi-bin/data/timeseries/getdaily.pl?typeTS=2&tstype=0&id=&variable=tmax&variablencep=hgt&leveln=${level1}&variabletwentcv3=None&levelt3=2000&variabletwentcv2=None&levelt=2000&variablenclim=None&variableera5=None&levelera5=2000&lat1=${lat}&lon1=${lon}&mon1=1&mon2=12&ipos%5B1%5D=${startYear}&ipos%5B2%5D=${endYear}&anom=0&gettimevar=get_timeseries&ranktype=2&number=0&value=0&typeval=1&highlow=1&lineORbar=line&use0ref=no&Submit=Get+Dates%2FTimeseries`;
+        
+        const urlLevel2 = `https://psl.noaa.gov/cgi-bin/data/timeseries/getdaily.pl?typeTS=2&tstype=0&id=&variable=tmax&variablencep=hgt&leveln=${level2}&variabletwentcv3=None&levelt3=2000&variabletwentcv2=None&levelt=2000&variablenclim=None&variableera5=None&levelera5=2000&lat1=${lat}&lon1=${lon}&mon1=1&mon2=12&ipos%5B1%5D=${startYear}&ipos%5B2%5D=${endYear}&anom=0&gettimevar=get_timeseries&ranktype=2&number=0&value=0&typeval=1&highlow=1&lineORbar=line&use0ref=no&Submit=Get+Dates%2FTimeseries`;
+        
+        // Using CORS proxy
+        const corsProxy = 'https://corsproxy.io/?';
+        
+        // Fetch data
+        console.log(`Fetching ${level1}mb data...`);
+        const responseLevel1 = await fetch(corsProxy + encodeURIComponent(urlLevel1));
+        const textLevel1 = await responseLevel1.text();
+        
+        console.log(`Fetching ${level2}mb data...`);
+        const responseLevel2 = await fetch(corsProxy + encodeURIComponent(urlLevel2));
+        const textLevel2 = await responseLevel2.text();
+        
+        // Parse data
+        const dataLevel1 = parseNOAAData(textLevel1);
+        const dataLevel2 = parseNOAAData(textLevel2);
+        
+        console.log(`Parsed ${dataLevel1.length} records for ${level1}mb`);
+        console.log(`Parsed ${dataLevel2.length} records for ${level2}mb`);
+        
+        if (dataLevel1.length === 0 || dataLevel2.length === 0) {
+            throw new Error('No data found. Please check the parameters or try different pressure levels.');
+        }
+        
+        // Calculate difference
+        const differences = [];
+        const dates = [];
+        
+        // Create a map for faster lookup
+        const mapLevel2 = new Map();
+        dataLevel2.forEach(d => {
+            mapLevel2.set(d.date.toISOString(), d.value);
+        });
+        
+        dataLevel1.forEach(d => {
+            const valueLevel2 = mapLevel2.get(d.date.toISOString());
+            if (valueLevel2 !== undefined) {
+                differences.push(d.value - valueLevel2);
+                dates.push(d.date);
+            }
+        });
+        
+        console.log(`Calculated ${differences.length} difference values`);
+        
+        // Calculate 365-day rolling mean
+        const rollingMean = calculateRollingMean(differences, 365);
+        
+        // Prepare chart data (only include non-null values)
+        const chartData = [];
+        for (let i = 0; i < dates.length; i++) {
+            if (rollingMean[i] !== null) {
+                chartData.push({
+                    x: dates[i],
+                    y: rollingMean[i]
+                });
+            }
+        }
+        
+        console.log(`Plotting ${chartData.length} data points`);
+        
+        // Update chart
+        chart.data.labels = chartData.map(d => d.x);
+        chart.data.datasets[0].data = chartData;
+        chart.data.datasets[0].label = `GPH Difference (${level1}mb - ${level2}mb) 365-Day Mean`;
+        chart.update();
+        
+        // Update statistics
+        if (chartData.length > 0) {
+            const values = chartData.map(d => d.y);
+            const stdDev = calculateStdDev(values);
+            const trend = calculateTrend(values);
+            
+            document.getElementById('currentValue').textContent = values[values.length - 1].toFixed(2) + ' m';
+            document.getElementById('meanValue').textContent = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2) + ' m';
+            document.getElementById('maxValue').textContent = Math.max(...values).toFixed(2) + ' m';
+            document.getElementById('minValue').textContent = Math.min(...values).toFixed(2) + ' m';
+            document.getElementById('stdValue').textContent = stdDev.toFixed(2) + ' m';
+            document.getElementById('trendValue').textContent = (trend > 0 ? '+' : '') + trend.toFixed(2) + ' m/yr';
+            document.getElementById('stats').style.display = 'grid';
+        }
+        
+    } catch (error) {
+        console.error('Error:', error);
+        errorDiv.textContent = `Error: ${error.message}`;
+        errorDiv.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        loading.style.display = 'none';
+    }
+}
+
+// Initialize chart on page load
+createChart();
+
+// Load data on page load with default values
+window.addEventListener('load', () => {
+    setTimeout(() => fetchAndPlot(), 500);
+});
+</script>
+</body>
+</html>
