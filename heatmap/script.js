@@ -1,21 +1,5 @@
-/*
- * Beautiful Temperature Cross-Section (Time x Pressure/Height)
- * ==============================================================
- * Fetches hourly forecast temperatures at multiple pressure levels from the
- * Open-Meteo API (ECMWF AIFS 0.25 deg single model) and renders them as a
- * smooth, publication-quality heatmap using Plotly.js:
- * time on the x-axis, altitude (derived from pressure) on the y-axis,
- * temperature as color.
- */
-
-// --------------------------------------------------------------------------
-// 1. CONFIGURATION
-// --------------------------------------------------------------------------
-
 const MODEL = "ncep_gfs_global";
-const TIMEZONE = "auto"; // local time at the requested coordinates
-
-// Pressure levels requested, ordered from the ground up (hPa)
+const TIMEZONE = "auto";
 const PRESSURE_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500, 400, 300];
 
 const HOURLY_VARS = [
@@ -25,10 +9,6 @@ const HOURLY_VARS = [
 const CURRENT_VARS = ["relative_humidity_2m"];
 
 const API_URL = "https://api.open-meteo.com/v1/forecast";
-
-// --------------------------------------------------------------------------
-// 2. FETCH DATA
-// --------------------------------------------------------------------------
 
 async function fetchForecast(config) {
   const params = new URLSearchParams({
@@ -47,11 +27,6 @@ async function fetchForecast(config) {
   return resp.json();
 }
 
-// --------------------------------------------------------------------------
-// 3. BUILD THE (TIME x HEIGHT) TEMPERATURE GRID
-// --------------------------------------------------------------------------
-
-/** ICAO standard-atmosphere approximation of geopotential height (m). */
 function pressureToHeightM(pHpa, p0 = 1013.25) {
   return 44330.0 * (1.0 - Math.pow(pHpa / p0, 1.0 / 5.255));
 }
@@ -65,7 +40,6 @@ function buildGrid(data, config) {
     : times.length;
   times = times.slice(0, n);
 
-  // Surface point: 2 m air temperature, placed at station elevation + 2 m
   const elevation = data.elevation || 0.0;
   const levels = [
     {
@@ -92,12 +66,7 @@ function buildGrid(data, config) {
   return { times, heights, temps };
 }
 
-// --------------------------------------------------------------------------
-// 4. PLOT
-// --------------------------------------------------------------------------
-
 function makeColorscale() {
-  // Deep blue (cold) -> cyan -> green -> yellow -> orange -> deep red (hot)
   const colors = [
     "#7a1414", "#d8542f", "#f0a542", "#f4e07d",
     "#a4e0a0", "#54c2c9", "#2a8bc7", "#1f4fa3", "#1a1a4e",
@@ -121,7 +90,6 @@ function plotCrossSection(times, heights, temps, data, config) {
   const colorscale = makeColorscale();
   const [tmin, tmax] = flatMinMax(temps);
 
-  // --- smooth heatmap + thin 2C contour lines ---
   const mainContour = {
     type: "contour",
     x: times,
@@ -142,7 +110,7 @@ function plotCrossSection(times, heights, temps, data, config) {
     },
     line: { width: 0.5, color: "rgba(255,255,255,0.35)" },
     colorbar: {
-      title: { text: "Relative Humidity (%)", font: { color: "white" } },
+      title: { text: "%", font: { color: "white" } },
       tickfont: { color: "white" },
       outlinecolor: "#444444",
     },
@@ -152,7 +120,6 @@ function plotCrossSection(times, heights, temps, data, config) {
 
   const traces = [mainContour];
 
-  // --- highlight the 0C isotherm (freezing level) ---
   if (tmin < 0 && tmax > 0) {
     traces.push({
       type: "contour",
@@ -173,7 +140,6 @@ function plotCrossSection(times, heights, temps, data, config) {
     });
   }
 
-  // --- secondary y-axis: pressure levels (hPa) ---
   const tickHeights = PRESSURE_LEVELS.map((p) => pressureToHeightM(p));
   const tickLabels = PRESSURE_LEVELS.map((p) => `${p} hPa`);
 
@@ -188,8 +154,8 @@ function plotCrossSection(times, heights, temps, data, config) {
     font: { color: "white" },
     title: {
       text:
-        `Vertical Relative Humidity Cross-Section  •  ${config.latitude}°N, ` +
-        `${config.longitude}°E  •  model: ${MODEL}`,
+        `Vertical Relative Humidity  •  ${config.latitude}°N, ` +
+        `${config.longitude}°E`,
       font: { size: 16, color: "white" },
     },
     xaxis: {
@@ -200,7 +166,7 @@ function plotCrossSection(times, heights, temps, data, config) {
       linecolor: "#444444",
     },
     yaxis: {
-      title: "Altitude (m, approx.)",
+      title: "Altitude (m)",
       gridcolor: "#333333",
       tickfont: { color: "white" },
       linecolor: "#444444",
@@ -223,7 +189,6 @@ function plotCrossSection(times, heights, temps, data, config) {
     margin: { t: 70, r: 130, b: 60, l: 70 },
   };
 
-  // --- current-condition marker ---
   const current = data.current || {};
   if (current && current.time) {
     const nowDate = new Date(current.time);
@@ -239,17 +204,12 @@ function plotCrossSection(times, heights, temps, data, config) {
         line: { color: "white", dash: "dash", width: 1 },
       });
 
-      let label = `Now: ${current.relative_humidity_2m ?? "?"}°C`;
-      if ("precipitation" in current) {
-        label += `, ${current.precipitation} mm precip`;
-      }
 
       layout.annotations.push({
         x: nowDate,
         y: 1,
         xref: "x",
         yref: "paper",
-        text: label,
         showarrow: false,
         xanchor: "left",
         yanchor: "bottom",
@@ -266,10 +226,6 @@ function plotCrossSection(times, heights, temps, data, config) {
     displaylogo: false,
   });
 }
-
-// --------------------------------------------------------------------------
-// 5. MAIN
-// --------------------------------------------------------------------------
 
 function setStatus(msg) {
   document.getElementById("status").textContent = msg;
