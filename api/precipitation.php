@@ -63,11 +63,11 @@ if ($csvContent === false) {
 $lines = explode("\n", $csvContent);
 $header = array_shift($lines); // remove header
 
-$data[] = str_getcsv($line, ',', '"', '\\');
+$data = [];
 foreach ($lines as $line) {
     $line = trim($line);
     if ($line === "") continue;
-    $data[] = str_getcsv($line);
+    $data[] = str_getcsv($line, ',', '"', '\\');
 }
 
 // ----------------- Output data -----------------
