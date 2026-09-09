@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Forecast</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.header-info {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: #1e293b;
+    border-radius: 12px;
+    width: 100%;
+}
+
+.header-info h1 {
+    color: #f1f5f9;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    font-size: 32px;
+}
+
+.header-info .info-line {
+    color: #cbd5e1;
+    font-size: 18px;
+    font-weight: 500;
+    margin: 5px 0;
+}
+
+.input-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: #1e293b;
+    border-radius: 12px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.input-group label {
+    color: #cbd5e1;
+    font-weight: 500;
+    font-size: 16px;
+}
+
+.input-group input,
+.input-group select {
+    background: #0f172a;
+    border: 1px solid #475569;
+    color: #f1f5f9;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border-color 0.2s;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.input-group input[type="number"] {
+    width: 100px;
+}
+
+.input-group select {
+    cursor: pointer;
+}
+
+.update-button {
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.update-button:hover {
+    background: #2563eb;
+}
+
+.loading-message {
+    text-align: center;
+    color: #3b82f6;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 20px;
+}
+
+.error-message {
+    color: #ef4444;
+    padding: 12px;
+    background: #2e1f1f;
+    border: 1px solid #7f1d1d;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+    width: 100%;
+}
+
+.charts-container {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    width: 100%;
+    margin-top: 30px;
+}
+
+.chart-container {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    position: relative;
+}
+
+.chart-title {
+    color: #f1f5f9;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 400px;
+}
+
+.custom-tooltip {
+    position: absolute;
+    background: rgba(30, 41, 59, 0.95);
+    border: 2px solid #3b82f6;
+    border-radius: 8px;
+    padding: 12px;
+    pointer-events: none;
+    z-index: 1000;
+    min-width: 200px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    display: none;
+}
+
+.custom-tooltip.active {
+    display: block;
+}
+
+.custom-tooltip-title {
+    color: #f1f5f9;
+    font-weight: 600;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #475569;
+    font-size: 14px;
+}
+
+.custom-tooltip-item {
+    display: flex;
+    align-items: center;
+    margin: 4px 0;
+    font-size: 13px;
+}
+
+.custom-tooltip-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.custom-tooltip-label {
+    color: #cbd5e1;
+    flex: 1;
+}
+
+.custom-tooltip-value {
+    color: #f1f5f9;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.close-tooltip {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    cursor: pointer;
+    color: #94a3b8;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px;
+}
+
+.close-tooltip:hover {
+    color: #f1f5f9;
+}
+</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-info">
+            <h1>Weather Forecast</h1>
+            <div class="info-line">Location: <span id="locationInfo">42.5°, 41.9°E</span></div>
+            <div class="info-line">Period: <span id="periodInfo">7 days</span></div>
+        </div>
+
+        <div class="input-container">
+            <div class="input-group">
+                <label for="latInput">Latitude:</label>
+                <input type="number" id="latInput" value="42.5" step="0.1" min="-90" max="90">
+            </div>
+            <div class="input-group">
+                <label for="lonInput">Longitude:</label>
+                <input type="number" id="lonInput" value="41.9" step="0.1" min="-180" max="180">
+            </div>
+            <div class="input-group">
+                <label for="daysSelect">Days:</label>
+                <select id="daysSelect">
+                    <option value="1">1 day</option>
+                    <option value="2">2 days</option>
+                    <option value="3">3 days</option>
+                    <option value="4">4 days</option>
+                    <option value="5">5 days</option>
+                    <option value="6">6 days</option>
+                    <option value="7">7 days</option>
+                    <option value="8">8 days</option>
+                    <option value="9">9 days</option>
+                    <option value="10">10 days</option>
+                    <option value="11">11 days</option>
+                    <option value="12">12 days</option>
+                    <option value="13">13 days</option>
+                    <option value="14">14 days</option>
+                    <option value="15">15 days</option>
+                    <option value="16" selected>16 days</option>
+                </select>
+            </div>
+            <button class="update-button" onclick="updateCharts()">Update</button>
+        </div>
+
+        <div id="loading" class="loading-message">Loading weather data...</div>
+        <div id="error" class="error-message" style="display: none;"></div>
+
+        <div class="charts-container" id="charts-container" style="display: none;">
+            <div class="chart-container">
+                <div class="chart-title">Temperature at 2m (°C)</div>
+                <div class="chart-wrapper">
+                    <canvas id="temperature_2m"></canvas>
+                    <div id="tooltip-temperature_2m" class="custom-tooltip">
+                        <span class="close-tooltip" onclick="closeTooltip('temperature_2m')">&times;</span>
+                        <div class="custom-tooltip-title"></div>
+                        <div class="custom-tooltip-body"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Accumulated Precipitation (mm)</div>
+                <div class="chart-wrapper">
+                    <canvas id="precipitation"></canvas>
+                    <div id="tooltip-precipitation" class="custom-tooltip">
+                        <span class="close-tooltip" onclick="closeTooltip('precipitation')">&times;</span>
+                        <div class="custom-tooltip-title"></div>
+                        <div class="custom-tooltip-body"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Mean Sea Level Pressure (hPa)</div>
+                <div class="chart-wrapper">
+                    <canvas id="pressure_msl"></canvas>
+                    <div id="tooltip-pressure_msl" class="custom-tooltip">
+                        <span class="close-tooltip" onclick="closeTooltip('pressure_msl')">&times;</span>
+                        <div class="custom-tooltip-title"></div>
+                        <div class="custom-tooltip-body"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Wind Gusts at 10 m (m/s)</div>
+                <div class="chart-wrapper">
+                    <canvas id="wind_gusts_10m"></canvas>
+                    <div id="tooltip-wind_gusts_10m" class="custom-tooltip">
+                        <span class="close-tooltip" onclick="closeTooltip('wind_gusts_10m')">&times;</span>
+                        <div class="custom-tooltip-title"></div>
+                        <div class="custom-tooltip-body"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Temperature at 925 hPa (°C)</div>
+                <div class="chart-wrapper">
+                    <canvas id="temperature_925hPa"></canvas>
+                    <div id="tooltip-temperature_925hPa" class="custom-tooltip">
+                        <span class="close-tooltip" onclick="closeTooltip('temperature_925hPa')">&times;</span>
+                        <div class="custom-tooltip-title"></div>
+                        <div class="custom-tooltip-body"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Temperature at 850 hPa (°C)</div>
+                <div class="chart-wrapper">
+                    <canvas id="temperature_850hPa"></canvas>
+                    <div id="tooltip-temperature_850hPa" class="custom-tooltip">
+                        <span class="close-tooltip" onclick="closeTooltip('temperature_850hPa')">&times;</span>
+                        <div class="custom-tooltip-title"></div>
+                        <div class="custom-tooltip-body"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Geopotential Height at 500 hPa (m)</div>
+                <div class="chart-wrapper">
+                    <canvas id="geopotential_height_500hPa"></canvas>
+                    <div id="tooltip-geopotential_height_500hPa" class="custom-tooltip">
+                        <span class="close-tooltip" onclick="closeTooltip('geopotential_height_500hPa')">&times;</span>
+                        <div class="custom-tooltip-title"></div>
+                        <div class="custom-tooltip-body"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let lat = parseFloat(document.getElementById('latInput').value);
+        let lon = parseFloat(document.getElementById('lonInput').value);
+        let days = parseInt(document.getElementById('daysSelect').value);
+
+        Chart.defaults.color = '#cbd5e1';
+        Chart.defaults.borderColor = '#475569';
+        
+        const modelColors = {
+            'ecmwf_ifs025': '#008f04',
+            'ecmwf_aifs025': '7aff81',
+            'gfs_global': '#ff0000',
+            'gfs_graphcast025': '#ffffff',
+            'icon_global': '#ff4800',
+            'gem_global': '#072ff5',
+            'ukmo_global_deterministic_10km': '#00ffbb',
+            'meteofrance_arpege_world': '#ffea00',
+            'jma_gsm': '#a3a375'
+        };
+
+        const modelNames = {
+            'ecmwf_ifs025': 'ECMWF IFS',
+            'ecmwf_aifs025_single': 'ECMWF AIFS',
+            'gfs_global': 'GFS',
+            'gfs_graphcast025': 'GFS GraphCast',
+            'icon_global': 'ICON',
+            'gem_global': 'GEM',
+            'ukmo_global_deterministic_10km': 'UKMO',
+            'meteofrance_arpege_world': 'ARPEGE',
+            'jma_gsm': 'JMA'
+        };
+
+        const charts = {};
+        const activeTooltips = {};
+
+        function updateLocationDisplay() {
+            const locationInfo = document.getElementById('locationInfo');
+            const periodInfo = document.getElementById('periodInfo');
+            
+            const latStr = Math.abs(lat).toFixed(1) + '°' + (lat >= 0 ? 'N' : 'S');
+            const lonStr = Math.abs(lon).toFixed(1) + '°' + (lon >= 0 ? 'E' : 'W');
+            
+            locationInfo.textContent = `${latStr}, ${lonStr}`;
+            periodInfo.textContent = `${days} day${days > 1 ? 's' : ''}`;
+        }
+
+        function updateCharts() {
+            lat = parseFloat(document.getElementById('latInput').value);
+            lon = parseFloat(document.getElementById('lonInput').value);
+            days = parseInt(document.getElementById('daysSelect').value);
+            
+            updateLocationDisplay();
+            
+            initializeCharts();
+        }
+
+        function closeTooltip(chartId) {
+            const tooltip = document.getElementById(`tooltip-${chartId}`);
+            if (tooltip) {
+                tooltip.classList.remove('active');
+                activeTooltips[chartId] = false;
+            }
+        }
+
+        function formatDateDDMM(date) {
+            const d = new Date(date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            return `${day}.${month}`;
+        }
+
+        function calculateCumulativeSum(values) {
+            const cumulative = [];
+            let sum = 0;
+            for (let i = 0; i < values.length; i++) {
+                if (values[i] !== null && values[i] !== undefined) {
+                    sum += values[i];
+                    cumulative.push(sum);
+                } else {
+                    cumulative.push(null);
+                }
+            }
+            return cumulative;
+        }
+
+        function convertKmhToMs(values) {
+            return values.map(value => value !== null && value !== undefined ? value / 3.6 : null);
+        }
+
+        function filterDataByDays(times, values, daysLimit) {
+            const now = new Date();
+            const cutoffTime = new Date(now.getTime() + daysLimit * 24 * 60 * 60 * 1000);
+            
+            const filteredValues = [];
+            const filteredTimes = [];
+            
+            times.forEach((time, idx) => {
+                const timestamp = new Date(time);
+                if (timestamp <= cutoffTime) {
+                    filteredTimes.push(time);
+                    filteredValues.push(values[idx]);
+                }
+            });
+            
+            return { times: filteredTimes, values: filteredValues };
+        }
+
+        function getMidnightTimestamps(startTime, endTime) {
+            const midnights = [];
+            const start = new Date(startTime);
+            const end = new Date(endTime);
+            
+            const current = new Date(start);
+            current.setHours(0, 0, 0, 0);
+            current.setDate(current.getDate() + 1);
+            
+            while (current <= end) {
+                midnights.push(new Date(current));
+                current.setDate(current.getDate() + 1);
+            }
+            
+            return midnights;
+        }
+
+
+        function createMidnightAnnotations(timeRange) {
+            const annotations = {};
+            const midnights = getMidnightTimestamps(timeRange.min, timeRange.max);
+            
+            midnights.forEach((midnight, index) => {
+                const dateStr = formatDateDDMM(midnight);
+                annotations[`line${index}`] = {
+                    type: 'line',
+                    xMin: midnight,
+                    xMax: midnight,
+                    borderColor: '#475569',
+                    borderWidth: 1,
+                    borderDash: [5, 5]
+                };
+            });
+            
+            return annotations;
+        }
+
+        function formatValue(value, variable) {
+            if (variable === 'pressure_msl' || variable === 'geopotential_height_500hPa') {
+                return value.toFixed(0);
+            }
+            return value.toFixed(1);
+        }
+
+        function showCustomTooltip(chartId, event, chart, clickedTime, variable) {
+            const tooltip = document.getElementById(`tooltip-${chartId}`);
+            const titleEl = tooltip.querySelector('.custom-tooltip-title');
+            const bodyEl = tooltip.querySelector('.custom-tooltip-body');
+            
+            const date = new Date(clickedTime);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            titleEl.textContent = `${day}.${month}.${year} ${hours}:${minutes}`;
+            
+            const values = [];
+            chart.data.datasets.forEach((dataset, idx) => {
+                const point = dataset.data.find(p => p.x.getTime() === clickedTime.getTime());
+                if (point) {
+                    const modelKey = Object.keys(modelColors)[idx];
+                    values.push({
+                        label: dataset.label,
+                        value: point.y,
+                        color: dataset.borderColor,
+                        modelKey: modelKey
+                    });
+                }
+            });
+            
+            values.sort((a, b) => b.value - a.value);
+            
+            let html = '';
+            values.forEach(item => {
+                html += `
+                    <div class="custom-tooltip-item">
+                        <div class="custom-tooltip-color" style="background-color: ${item.color}"></div>
+                        <div class="custom-tooltip-label">${item.label}</div>
+                        <div class="custom-tooltip-value">${formatValue(item.value, variable)}</div>
+                    </div>
+                `;
+            });
+            bodyEl.innerHTML = html;
+        
+            const rect = event.native.target.getBoundingClientRect();
+            const containerRect = event.native.target.closest('.chart-wrapper').getBoundingClientRect();
+            
+            let left = event.native.offsetX + 10;
+            let top = event.native.offsetY - 10;
+            
+            if (left + 220 > containerRect.width) {
+                left = event.native.offsetX - 220;
+            }
+            if (top + 200 > containerRect.height) {
+                top = containerRect.height - 200;
+            }
+            
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+            tooltip.classList.add('active');
+            activeTooltips[chartId] = true;
+        }
+
+        function createChart(canvasId, variable, allData) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            
+            const datasets = [];
+            let timeRange = { min: null, max: null };
+            let allDates = new Set();
+            
+            const dataArray = Array.isArray(allData) ? allData : [allData];
+            
+            dataArray.forEach((modelData, index) => {
+                if (modelData && modelData.hourly && modelData.hourly[variable]) {
+                    const modelName = modelData.model || Object.keys(modelColors)[index];
+                    
+                    const filtered = filterDataByDays(
+                        modelData.hourly.time, 
+                        modelData.hourly[variable], 
+                        days
+                    );
+                    
+                    let values = filtered.values;
+                    
+                    if (variable === 'wind_gusts_10m') {
+                        values = convertKmhToMs(values);
+                    }
+                    
+                    if (variable === 'precipitation') {
+                        values = calculateCumulativeSum(values);
+                    }
+                    
+                    const dataPoints = [];
+                    filtered.times.forEach((time, idx) => {
+                        const value = values[idx];
+                        if (value !== null && value !== undefined) {
+                            const timestamp = new Date(time);
+                            dataPoints.push({
+                                x: timestamp,
+                                y: value
+                            });
+                            
+                            const dateKey = formatDateDDMM(timestamp);
+                            allDates.add(dateKey);
+                            
+                            if (!timeRange.min || timestamp < timeRange.min) {
+                                timeRange.min = timestamp;
+                            }
+                            if (!timeRange.max || timestamp > timeRange.max) {
+                                timeRange.max = timestamp;
+                            }
+                        }
+                    });
+                    
+                    if (dataPoints.length > 0) {
+                        datasets.push({
+                            label: modelNames[modelName] || modelName,
+                            data: dataPoints,
+                            borderColor: modelColors[modelName] || `hsl(${index * 45}, 70%, 50%)`,
+                            backgroundColor: (modelColors[modelName] || `hsl(${index * 45}, 70%, 50%)`) + '20',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            pointHitRadius: 10,
+                            spanGaps: true
+                        });
+                    }
+                }
+            });
+
+            
+
+            if (charts[canvasId]) {
+                charts[canvasId].destroy();
+            }
+
+            const annotations = timeRange.min && timeRange.max ? createMidnightAnnotations(timeRange) : {};
+
+            charts[canvasId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    onClick: (event, activeElements) => {
+                        if (activeElements.length > 0) {
+                            const dataIndex = activeElements[0].index;
+                            const datasetIndex = activeElements[0].datasetIndex;
+                            const chart = charts[canvasId];
+                            const point = chart.data.datasets[datasetIndex].data[dataIndex];
+                            
+                            if (activeTooltips[canvasId]) {
+                                closeTooltip(canvasId);
+                            } else {
+                                showCustomTooltip(canvasId, event, chart, point.x, variable);
+                            }
+                        }
+                    },
+                    plugins: {
+                        annotation: {
+                            annotations: annotations
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#ffffff',
+                                padding: 10,
+                                font: {
+                                    size: 14
+                                },
+                                usePointStyle: false,
+                                pointStyle: 'line'
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#1e293b',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#475569',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: true,
+                            callbacks: {
+                                title: function(context) {
+                                    const date = new Date(context[0].parsed.x);
+                                    const day = String(date.getDate()).padStart(2, '0');
+                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                    const year = date.getFullYear();
+                                    const hours = String(date.getHours()).padStart(2, '0');
+                                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                                    return `${day}.${month}.${year} ${hours}:${minutes}`;
+                                },
+                                beforeBody: function(context) {
+                                    context.sort((a, b) => b.parsed.y - a.parsed.y);
+                                    return '';
+                                },
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatValue(context.parsed.y, variable);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'dd.MM',
+                                    hour: 'dd.MM'
+                                }
+                            },
+                            adapters: {
+                                date: {
+                                    locale: 'en-US'
+                                }
+                            },
+                            grid: {
+                                color: '#334155',
+                                drawBorder: false,
+                                display: true
+                            },
+                            ticks: {
+                                source: 'auto',
+                                autoSkip: false,
+                                color: '#ffffff',
+                                maxRotation: 0,
+                                callback: function(value, index, ticks) {
+                                    const date = new Date(value);
+                                    
+                                    if (index === 0 || (index > 0 && new Date(ticks[index - 1].value).getDate() !== date.getDate())) {
+                                        const day = String(date.getDate()).padStart(2, '0');
+                                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                                        return `${day}.${month}`;
+                                    }
+                                    return '';
+                                },
+                                font: {
+                                    size: 14
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date (UTC)',
+                                color: '#ffffff',
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: '#334155',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 14
+                                },
+                                callback: function(value) {
+                                    if (variable === 'pressure_msl' || variable === 'geopotential_height_500hPa') {
+                                        return value.toFixed(0);
+                                    }
+                                    return value;
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: getUnitLabel(variable),
+                                color: '#ffffff',
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function getUnitLabel(variable) {
+            const units = {
+                'temperature_2m': 'Temperature (°C)',
+                'precipitation': 'Accumulated Precipitation (mm)',
+                'pressure_msl': 'Pressure (hPa)',
+                'wind_gusts_10m': 'Wind Speed (m/s)',
+                'temperature_925hPa': 'Temperature (°C)',
+                'temperature_850hPa': 'Temperature (°C)',
+                'geopotential_height_500hPa': 'Height (m)'
+            };
+            return units[variable] || 'Value';
+        }
+
+        const API_CONFIG = {
+            BASE_URL: 'https://marsentim.com/meteo/data.php',
+            KEY: null
+        };
+
+        async function fetchKey() {
+            try {
+                const response = await fetch("key.php", { credentials: "include" });
+                if (!response.ok) {
+                    throw new Error("Failed to fetch key: " + response.status);
+                }
+                const data = await response.json();
+                API_CONFIG.KEY = data.key;
+                return data.key;
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        async function initializeCharts() {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const chartsContainer = document.getElementById('charts-container');
+            
+            try {
+                loadingEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                chartsContainer.style.display = 'none';
+                
+                updateLocationDisplay();
+                
+                await fetchKey();
+                
+                const models = [
+                    'ecmwf_ifs025',
+                    'gfs_global',
+                    'ecmwf_aifs025_single',
+                    'gfs_graphcast025',
+                    'icon_global',
+                    'gem_global',
+                    'ukmo_global_deterministic_10km',
+                    'meteofrance_arpege_world',
+                    'jma_gsm'
+                ];
+                
+                const allModelData = [];
+                const fetchPromises = models.map(async (model) => {
+                    try {
+                        const url = `${API_CONFIG.BASE_URL}?lat=${lat}&lon=${lon}&model=${model}&key=${API_CONFIG.KEY}`;
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        const data = await response.json();
+                        data.model = model;
+                        return data;
+                    } catch (err) {
+                        return null;
+                    }
+                });
+                
+                const results = await Promise.all(fetchPromises);
+                
+                results.forEach(data => {
+                    if (data) {
+                        allModelData.push(data);
+                    }
+                });
+                
+                if (allModelData.length === 0) {
+                    throw new Error('No data received from any model');
+                }
+                
+                const variables = [
+                    'temperature_2m',
+                    'precipitation',
+                    'pressure_msl',
+                    'wind_gusts_10m',
+                    'temperature_925hPa',
+                    'temperature_850hPa',
+                    'geopotential_height_500hPa'
+                ];
+                
+                variables.forEach(variable => {
+                    createChart(variable, variable, allModelData);
+                });
+                
+                loadingEl.style.display = 'none';
+                chartsContainer.style.display = 'flex';
+                
+            } catch (error) {
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = `Error loading weather data: ${error.message}`;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', initializeCharts);
+        
+        setInterval(initializeCharts, 30 * 60 * 1000);
+    </script>
+</body>
+</html>
