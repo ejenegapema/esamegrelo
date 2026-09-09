@@ -70,7 +70,7 @@ function buildGrid(data, config) {
   const levels = [
     {
       height: elevation + 2.0,
-      temps: hourly.temperature_2m.slice(0, n).map(Number),
+      temps: hourly.relative_humidity_2m.slice(0, n).map(Number),
     },
   ];
 
@@ -128,8 +128,8 @@ function plotCrossSection(times, heights, temps, data, config) {
     y: heights,
     z: temps,
     colorscale,
-    zmin: tmin - 1,
-    zmax: tmax + 1,
+    zmin: 0,
+    zmax: 100,
     connectgaps: true,
     contours: {
       coloring: "heatmap",
@@ -142,12 +142,12 @@ function plotCrossSection(times, heights, temps, data, config) {
     },
     line: { width: 0.5, color: "rgba(255,255,255,0.35)" },
     colorbar: {
-      title: { text: "Temperature (°C)", font: { color: "white" } },
+      title: { text: "Relative Humidity (%)", font: { color: "white" } },
       tickfont: { color: "white" },
       outlinecolor: "#444444",
     },
     hovertemplate:
-      "Time: %{x}<br>Height: %{y:.0f} m<br>Temp: %{z:.1f}°C<extra></extra>",
+      "Time: %{x}<br>Height: %{y:.0f} m<br>Rh: %{z:.1f}%<extra></extra>",
   };
 
   const traces = [mainContour];
@@ -188,7 +188,7 @@ function plotCrossSection(times, heights, temps, data, config) {
     font: { color: "white" },
     title: {
       text:
-        `Vertical Temperature Cross-Section  •  ${config.latitude}°N, ` +
+        `Vertical Relative Humidity Cross-Section  •  ${config.latitude}°N, ` +
         `${config.longitude}°E  •  model: ${MODEL}`,
       font: { size: 16, color: "white" },
     },
@@ -239,7 +239,7 @@ function plotCrossSection(times, heights, temps, data, config) {
         line: { color: "white", dash: "dash", width: 1 },
       });
 
-      let label = `Now: ${current.temperature_2m ?? "?"}°C`;
+      let label = `Now: ${current.relative_humidity_2m ?? "?"}°C`;
       if ("precipitation" in current) {
         label += `, ${current.precipitation} mm precip`;
       }
