@@ -43,10 +43,8 @@ $response = curl_exec($ch);
 if (curl_errno($ch)) {
     http_response_code(500);
     echo "Error fetching data: " . curl_error($ch);
-    curl_close($ch);
     exit;
 }
-curl_close($ch);
 
 // ====== PARSE JSON ======
 $data = json_decode($response, true);
