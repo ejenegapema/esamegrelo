@@ -2,7 +2,7 @@
 
 // ====== MODEL SHORT NAMES ======
 $MODEL_NAMES = ["dwd_icon_global" => "icon", "ecmwf_ifs" => "ecmwf_ifs", "ncep_gfs_global" => "gfs", "meteofrance_arpege_world" => "arpege", "jma_gsm" => "jma",
-                "ncep_aigfs025" => "aigfs", "ukmo_global_deterministic_10km"=> "ukmet", "cmc_gem_gdps" => "gem", "ecmwf_aifs025_single" => "ecmwf_aifs"];
+                "ncep_aigfs025" => "aigfs", "ukmo_global_deterministic_10km"=> "ukmet", "cmc_gem_gdps" => "gem", "ecmwf_aifs025_single" => "ecmwf_aifs", "cma_grapes_global" => "cma"];
 
 // Reverse map: short → full
 $MODEL_ALIASES = array_flip($MODEL_NAMES);
