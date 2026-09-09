@@ -1,6 +1,5 @@
 <?php
 
-// ====== PARAMETERS ======
 $lat = isset($_GET['lat']) ? floatval($_GET['lat']) : 42.5;
 $lon = isset($_GET['lon']) ? floatval($_GET['lon']) : 41.9;
 
