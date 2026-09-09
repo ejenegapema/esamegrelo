@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Сводная таблица. Температура воздуха и осадки. Сентябрь 2026 г.</title>
+<title>Сводная таблица. Температура воздуха и осадки</title>
 <link rel="stylesheet" href="https://isamegrelo.vercel.app/monitors/style.css">
 </head>
 <body>
@@ -12,22 +12,22 @@
 
   <header class="page-header">
     <span class="eyebrow"><span class="dot"></span>Климатический монитор</span>
-    <h1>Сводная таблица. Температура воздуха и осадки</h1>
-    <p class="subtitle">Сентябрь 2026 г. · данные по <b>18</b> станциям</p>
+    <h1 id="page-title">Сводная таблица. Температура воздуха и осадки</h1>
+    <p class="subtitle" id="page-subtitle">Загрузка данных…</p>
   </header>
 
   <div class="meta-strip">
     <div class="meta-item">
       <span class="label">Период</span>
-      <span class="value">Сентябрь 2026 г.</span>
+      <span class="value" id="meta-period">—</span>
     </div>
     <div class="meta-item">
       <span class="label">Источник</span>
-      <span class="value"><a href="https://www.pogodaiklimat.ru/monitors.php?id=rus" target="_blank" rel="noopener">pogodaiklimat.ru</a></span>
+      <span class="value" id="meta-source">—</span>
     </div>
     <div class="meta-item">
       <span class="label">Обновлено</span>
-      <span class="value">2026-09-09 21:54 UTC</span>
+      <span class="value" id="meta-generated">—</span>
     </div>
   </div>
 
@@ -46,186 +46,9 @@
             <th>% нормы<span class="unit">осадков</span></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="stations-body">
           <tr>
-            <td class="col-id">27612</td>
-            <td class="col-name">Москва</td>
-            <td class="col-num">14.9</td>
-            <td class="col-num">11.9</td>
-            <td class="col-num"><span class="dev dev-pos">+0.8°</span></td>
-            <td class="col-num">15</td>
-            <td class="col-num">66</td>
-            <td class="col-num">22%</td>
-          </tr>
-          <tr>
-            <td class="col-id">26063</td>
-            <td class="col-name">Санкт-Петербург</td>
-            <td class="col-num">14.5</td>
-            <td class="col-num">12.4</td>
-            <td class="col-num"><span class="dev dev-pos">+0.1°</span></td>
-            <td class="col-num">50</td>
-            <td class="col-num">57</td>
-            <td class="col-num">88%</td>
-          </tr>
-          <tr>
-            <td class="col-id">26850</td>
-            <td class="col-name">Минск</td>
-            <td class="col-num">15.5</td>
-            <td class="col-num">11.8</td>
-            <td class="col-num"><span class="dev dev-pos">+1.5°</span></td>
-            <td class="col-num">17</td>
-            <td class="col-num">52</td>
-            <td class="col-num">33%</td>
-          </tr>
-          <tr>
-            <td class="col-id">33345</td>
-            <td class="col-name">Киев</td>
-            <td class="col-num">18.5</td>
-            <td class="col-num">14.9</td>
-            <td class="col-num"><span class="dev dev-pos">+1.3°</span></td>
-            <td class="col-num">8</td>
-            <td class="col-num">58</td>
-            <td class="col-num">13%</td>
-          </tr>
-          <tr>
-            <td class="col-id">26702</td>
-            <td class="col-name">Калининград</td>
-            <td class="col-num">16.3</td>
-            <td class="col-num">13.5</td>
-            <td class="col-num"><span class="dev dev-pos">+1.0°</span></td>
-            <td class="col-num">65</td>
-            <td class="col-num">74</td>
-            <td class="col-num">88%</td>
-          </tr>
-          <tr>
-            <td class="col-id">27459</td>
-            <td class="col-name">Нижний Новгород</td>
-            <td class="col-num">14.6</td>
-            <td class="col-num">11.7</td>
-            <td class="col-num"><span class="dev dev-pos">+0.7°</span></td>
-            <td class="col-num">7</td>
-            <td class="col-num">60</td>
-            <td class="col-num">11%</td>
-          </tr>
-          <tr>
-            <td class="col-id">22113</td>
-            <td class="col-name">Мурманск</td>
-            <td class="col-num">9.4</td>
-            <td class="col-num">7.6</td>
-            <td class="col-num"><span class="dev dev-pos">+0.2°</span></td>
-            <td class="col-num">39</td>
-            <td class="col-num">54</td>
-            <td class="col-num">71%</td>
-          </tr>
-          <tr>
-            <td class="col-id">22550</td>
-            <td class="col-name">Архангельск</td>
-            <td class="col-num">12.6</td>
-            <td class="col-num">8.8</td>
-            <td class="col-num"><span class="dev dev-pos">+1.9°</span></td>
-            <td class="col-num">84</td>
-            <td class="col-num">62</td>
-            <td class="col-num">135%</td>
-          </tr>
-          <tr>
-            <td class="col-id">34730</td>
-            <td class="col-name">Ростов-на-Дону</td>
-            <td class="col-num">20.6</td>
-            <td class="col-num">17.1</td>
-            <td class="col-num"><span class="dev dev-pos">+1.1°</span></td>
-            <td class="col-num">12</td>
-            <td class="col-num">43</td>
-            <td class="col-num">28%</td>
-          </tr>
-          <tr>
-            <td class="col-id">37099</td>
-            <td class="col-name">Сочи</td>
-            <td class="col-num">21.9</td>
-            <td class="col-num">20.5</td>
-            <td class="col-num"><span class="dev dev-neg">-0.2°</span></td>
-            <td class="col-num">7</td>
-            <td class="col-num">139</td>
-            <td class="col-num">5%</td>
-          </tr>
-          <tr>
-            <td class="col-id">35121</td>
-            <td class="col-name">Оренбург</td>
-            <td class="col-num">20.1</td>
-            <td class="col-num">14.2</td>
-            <td class="col-num"><span class="dev dev-pos">+3.3°</span></td>
-            <td class="col-num">1</td>
-            <td class="col-num">26</td>
-            <td class="col-num">4%</td>
-          </tr>
-          <tr>
-            <td class="col-id">28440</td>
-            <td class="col-name">Екатеринбург</td>
-            <td class="col-num">16.5</td>
-            <td class="col-num">10.4</td>
-            <td class="col-num"><span class="dev dev-pos">+3.9°</span></td>
-            <td class="col-num">1</td>
-            <td class="col-num">45</td>
-            <td class="col-num">3%</td>
-          </tr>
-          <tr>
-            <td class="col-id">29638</td>
-            <td class="col-name">Новосибирск</td>
-            <td class="col-num">14.1</td>
-            <td class="col-num">10.3</td>
-            <td class="col-num"><span class="dev dev-pos">+1.4°</span></td>
-            <td class="col-num">4</td>
-            <td class="col-num">46</td>
-            <td class="col-num">8%</td>
-          </tr>
-          <tr>
-            <td class="col-id">23078</td>
-            <td class="col-name">Норильск</td>
-            <td class="col-num">10.4</td>
-            <td class="col-num">4.4</td>
-            <td class="col-num"><span class="dev dev-pos">+2.9°</span></td>
-            <td class="col-num">30</td>
-            <td class="col-num">41</td>
-            <td class="col-num">72%</td>
-          </tr>
-          <tr>
-            <td class="col-id">30710</td>
-            <td class="col-name">Иркутск</td>
-            <td class="col-num">12.4</td>
-            <td class="col-num">9.5</td>
-            <td class="col-num"><span class="dev dev-pos">+0.4°</span></td>
-            <td class="col-num">51</td>
-            <td class="col-num">53</td>
-            <td class="col-num">97%</td>
-          </tr>
-          <tr>
-            <td class="col-id">24959</td>
-            <td class="col-name">Якутск</td>
-            <td class="col-num">10.9</td>
-            <td class="col-num">6.4</td>
-            <td class="col-num"><span class="dev dev-pos">+0.8°</span></td>
-            <td class="col-num">2</td>
-            <td class="col-num">30</td>
-            <td class="col-num">8%</td>
-          </tr>
-          <tr>
-            <td class="col-id">20069</td>
-            <td class="col-name">Остров Визе</td>
-            <td class="col-num">1.6</td>
-            <td class="col-num">-1.5</td>
-            <td class="col-num"><span class="dev dev-pos">+1.7°</span></td>
-            <td class="col-num">5</td>
-            <td class="col-num">23</td>
-            <td class="col-num">20%</td>
-          </tr>
-          <tr>
-            <td class="col-id">31960</td>
-            <td class="col-name">Владивосток</td>
-            <td class="col-num">18.1</td>
-            <td class="col-num">16.3</td>
-            <td class="col-num"><span class="dev dev-neg">-0.1°</span></td>
-            <td class="col-num">39</td>
-            <td class="col-num">103</td>
-            <td class="col-num">38%</td>
+            <td colspan="8" style="text-align:center; color: var(--text-muted);">Загрузка данных…</td>
           </tr>
         </tbody>
       </table>
@@ -239,11 +62,109 @@
   </div>
 
   <footer class="page-footer">
-    <span>Данные: <a href="https://www.pogodaiklimat.ru/monitors.php?id=rus" target="_blank" rel="noopener">pogodaiklimat.ru</a></span>
-    <span>Сгенерировано: 2026-09-09 21:54 UTC</span>
+    <span id="footer-source"></span>
+    <span id="footer-generated"></span>
   </footer>
 
 </div>
+
+<script>
+const API_URL = "https://isamegrelo.vercel.app/api/parser.php?format=json";
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function devClass(devStr) {
+  if (devStr === null || devStr === undefined || devStr === "") return "dev-na";
+  const s = String(devStr).trim();
+  if (s.startsWith("+")) return "dev-pos";
+  if (s.startsWith("-")) return "dev-neg";
+  return "dev-zero";
+}
+
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ` +
+           `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+  } catch (e) {
+    return iso;
+  }
+}
+
+async function loadData() {
+  const tbody = document.getElementById("stations-body");
+
+  try {
+    const res = await fetch(API_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+
+    // Header / meta
+    document.getElementById("page-title").textContent = data.period || "Сводная таблица. Температура воздуха и осадки";
+    document.getElementById("page-subtitle").textContent =
+      `Данные по ${(data.stations || []).length} станциям` +
+      (data.missing && data.missing.length ? ` · пропущено: ${data.missing.length}` : "");
+
+    document.getElementById("meta-period").textContent = data.period || "—";
+
+    const sourceEl = document.getElementById("meta-source");
+    if (data.source) {
+      sourceEl.innerHTML = `<a href="${escapeHtml(data.source)}" target="_blank" rel="noopener">${escapeHtml(data.source.replace(/^https?:\/\//, ""))}</a>`;
+    } else {
+      sourceEl.textContent = "—";
+    }
+
+    document.getElementById("meta-generated").textContent = formatDateTime(data.generated_at);
+
+    // Footer
+    const footerSource = document.getElementById("footer-source");
+    if (data.source) {
+      footerSource.innerHTML = `Данные: <a href="${escapeHtml(data.source)}" target="_blank" rel="noopener">${escapeHtml(data.source)}</a>`;
+    }
+    document.getElementById("footer-generated").textContent =
+      "Сгенерировано: " + formatDateTime(data.generated_at);
+
+    // Table rows
+    const stations = data.stations || [];
+    if (stations.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted);">Нет данных</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = stations.map((st) => {
+      const dClass = devClass(st.temp_deviation);
+      return `
+        <tr>
+          <td class="col-id">${escapeHtml(st.wmo_id ?? st.index ?? "")}</td>
+          <td class="col-name">${escapeHtml(st.name ?? "")}</td>
+          <td class="col-num">${st.temp_avg !== undefined && st.temp_avg !== null && st.temp_avg !== "" ? escapeHtml(st.temp_avg) : '<span class="cell-na">н/д</span>'}</td>
+          <td class="col-num">${st.temp_norm !== undefined && st.temp_norm !== null && st.temp_norm !== "" ? escapeHtml(st.temp_norm) : '<span class="cell-na">н/д</span>'}</td>
+          <td class="col-num">${st.temp_deviation ? `<span class="dev ${dClass}">${escapeHtml(st.temp_deviation)}</span>` : '<span class="cell-na">н/д</span>'}</td>
+          <td class="col-num">${st.precip_fallen !== undefined && st.precip_fallen !== null && st.precip_fallen !== "" ? escapeHtml(st.precip_fallen) : '<span class="cell-na">н/д</span>'}</td>
+          <td class="col-num">${st.precip_norm !== undefined && st.precip_norm !== null && st.precip_norm !== "" ? escapeHtml(st.precip_norm) : '<span class="cell-na">н/д</span>'}</td>
+          <td class="col-num">${st.precip_percent !== undefined && st.precip_percent !== null && st.precip_percent !== "" ? escapeHtml(st.precip_percent) + "%" : '<span class="cell-na">н/д</span>'}</td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--pos);">Ошибка загрузки данных: ${escapeHtml(err.message)}</td></tr>`;
+    document.getElementById("page-subtitle").textContent = "Ошибка загрузки данных";
+  }
+}
+
+loadData();
+</script>
 
 </body>
 </html>
