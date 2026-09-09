@@ -63,7 +63,7 @@ if ($csvContent === false) {
 $lines = explode("\n", $csvContent);
 $header = array_shift($lines); // remove header
 
-$data = [];
+$data[] = str_getcsv($line, ',', '"', '\\');
 foreach ($lines as $line) {
     $line = trim($line);
     if ($line === "") continue;
