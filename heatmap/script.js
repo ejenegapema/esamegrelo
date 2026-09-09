@@ -99,8 +99,8 @@ function buildGrid(data, config) {
 function makeColorscale() {
   // Deep blue (cold) -> cyan -> green -> yellow -> orange -> deep red (hot)
   const colors = [
-    "#1a1a4e", "#1f4fa3", "#2a8bc7", "#54c2c9",
-    "#a4e0a0", "#f4e07d", "#f0a542", "#d8542f", "#7a1414",
+    "#7a1414", "#d8542f", "#f0a542", "#f4e07d",
+    "#a4e0a0", "#54c2c9", "#2a8bc7", "#1f4fa3", "#1a1a4e",
   ];
   const n = colors.length;
   return colors.map((c, i) => [i / (n - 1), c]);
@@ -120,14 +120,14 @@ function flatMinMax(arr2d) {
 function plotCrossSection(times, heights, temps, data, config) {
   const colorscale = makeColorscale();
   const [tmin, tmax] = flatMinMax(temps);
-  const reversedColorscale = colorscale.slice().reverse();
+
   // --- smooth heatmap + thin 2C contour lines ---
   const mainContour = {
     type: "contour",
     x: times,
     y: heights,
     z: temps,
-    colorscale: reversedColorscale,
+    colorscale,
     zmin: 0,
     zmax: 100,
     connectgaps: true,
