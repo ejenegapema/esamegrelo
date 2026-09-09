@@ -56,7 +56,7 @@ h1 {
 }
 
 #controls button {
-  background: #1f6feb;
+  background: #0906c4;
   color: white;
   border: none;
   border-radius: 6px;
@@ -65,7 +65,7 @@ h1 {
   font-weight: 600;
 }
 
-#controls button:hover { background: #388bfd; }
+#controls button:hover { background: #0906c4; }
 
 #status {
   font-size: 12px;
