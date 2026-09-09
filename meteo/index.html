@@ -379,7 +379,7 @@ body {
         Chart.defaults.borderColor = '#475569';
         
         const modelColors = {
-            'ecmwf_ifs': '#008f04',
+            'ecmwf_ifs025': '#008f04',
             'ecmwf_aifs025_single': '#7aff81',
             'ncep_gfs_global': '#ff0000',
             'ncep_aigfs025': '#ffffff',
@@ -392,7 +392,7 @@ body {
         };
 
         const modelNames = {
-            'ecmwf_ifs': 'ECMWF IFS',
+            'ecmwf_ifs025': 'ECMWF IFS',
             'ecmwf_aifs025_single': 'ECMWF AIFS',
             'ncep_gfs_global': 'GFS',
             'ncep_aigfs025': 'AIGFS',
@@ -781,7 +781,7 @@ body {
                             },
                             title: {
                                 display: true,
-                                text: 'Date (UTC)',
+                                text: 'Date',
                                 color: '#ffffff',
                                 font: {
                                     size: 14
@@ -849,7 +849,7 @@ body {
                 updateLocationDisplay();
                 
                 const models = [
-                    'ecmwf_ifs',
+                    'ecmwf_ifs025',
                     'ncep_gfs_global',
                     'ecmwf_aifs025_single',
                     'ncep_aigfs025',
