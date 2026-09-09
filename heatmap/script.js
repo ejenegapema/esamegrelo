@@ -76,7 +76,7 @@ function buildGrid(data, config) {
 
   // Pressure-level points
   for (const p of PRESSURE_LEVELS) {
-    const key = `temperature_${p}hPa`;
+    const key = `relative_humidity_${p}hPa`;
     if (!(key in hourly)) continue;
     levels.push({
       height: pressureToHeightM(p),
