@@ -3,15 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Температура воздуха и осадки</title>
+<title>Температура воздуха и количество осадков</title>
 <link rel="stylesheet" href="https://isamegrelo.vercel.app/monitors/style.css">
 </head>
 <body>
+
 <div class="page">
-  <header class="page-header">
-    <h1 id="page-title">Температура воздуха и осадки</h1>
-    <p class="subtitle" id="page-subtitle">Загрузка данных…</p>
-  </header>
   <div class="table-card">
     <div class="table-scroll">
       <table>
@@ -39,9 +36,12 @@
     <span id="footer-source"></span>
     <span id="footer-generated"></span>
   </footer>
+
 </div>
+
 <script>
-const API_URL = "https://isamegrelo.vercel.app/api/monitors.php?format=json";
+const API_URL = "https://isamegrelo.vercel.app/api/parser.php?format=json";
+
 function escapeHtml(str) {
   if (str === null || str === undefined) return "";
   return String(str)
@@ -80,7 +80,8 @@ async function loadData() {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
 
-    document.getElementById("page-title").textContent = data.period || "Сводная таблица. Температура воздуха и осадки";
+    // Header / meta
+    document.getElementById("page-title").textContent = data.period || "Температура воздуха и количество осадков";
     document.getElementById("page-subtitle").textContent =
       `Данные по ${(data.stations || []).length} станциям` +
       (data.missing && data.missing.length ? ` · пропущено: ${data.missing.length}` : "");
@@ -95,6 +96,13 @@ async function loadData() {
     }
 
     document.getElementById("meta-generated").textContent = formatDateTime(data.generated_at);
+
+    const footerSource = document.getElementById("footer-source");
+    if (data.source) {
+      footerSource.innerHTML = `Данные: <a href="${escapeHtml(data.source)}" target="_blank" rel="noopener">${escapeHtml(data.source)}</a>`;
+    }
+    document.getElementById("footer-generated").textContent =
+      "" + formatDateTime(data.generated_at);
 
     const stations = data.stations || [];
     if (stations.length === 0) {
@@ -123,7 +131,9 @@ async function loadData() {
     document.getElementById("page-subtitle").textContent = "Ошибка загрузки данных";
   }
 }
+
 loadData();
 </script>
+
 </body>
 </html>
