@@ -16,7 +16,7 @@
           <tr>
             <th class="col-id">WMO ID</th>
             <th class="col-name">Станция</th>
-            <th>Т средняя<span class="unit">°C</span></th>
+            <th>Т средн.<span class="unit">°C</span></th>
             <th>Норма<span class="unit">°C</span></th>
             <th>Отклонение<span class="unit">от нормы</span></th>
             <th>Осадки<span class="unit">мм</span></th>
@@ -32,6 +32,7 @@
       </table>
     </div>
   </div>
+
   <footer class="page-footer">
     <span id="footer-source"></span>
     <span id="footer-generated"></span>
@@ -40,7 +41,7 @@
 </div>
 
 <script>
-const API_URL = "https://isamegrelo.vercel.app/api/parser.php?format=json";
+const API_URL = "https://isamegrelo.vercel.app/api/monitors.php?format=json";
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return "";
@@ -79,6 +80,7 @@ async function loadData() {
     const res = await fetch(API_URL, { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
+
     document.getElementById("page-title").textContent = data.period || "Температура воздуха и количество осадков";
     document.getElementById("page-subtitle").textContent =
       `Данные по ${(data.stations || []).length} станциям` +
@@ -96,6 +98,11 @@ async function loadData() {
     document.getElementById("meta-generated").textContent = formatDateTime(data.generated_at);
 
     const footerSource = document.getElementById("footer-source");
+    if (data.source) {
+      footerSource.innerHTML = `<a href="${escapeHtml(data.source)}" target="_blank" rel="noopener">${escapeHtml(data.source)}</a>`;
+    }
+    document.getElementById("footer-generated").textContent =
+      "" + formatDateTime(data.generated_at);
 
     const stations = data.stations || [];
     if (stations.length === 0) {
