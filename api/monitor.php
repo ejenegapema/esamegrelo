@@ -547,10 +547,6 @@ HTML;
 
   {$tableBlock}
 
-  <div class="page-footer">
-    Данные: pogodaiklimat.ru (страницы monitor.php по каждой станции)
-  </div>
-
 </div>
 </body>
 </html>
