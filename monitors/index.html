@@ -79,8 +79,6 @@ async function loadData() {
     const res = await fetch(API_URL, { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
-
-    // Header / meta
     document.getElementById("page-title").textContent = data.period || "Температура воздуха и количество осадков";
     document.getElementById("page-subtitle").textContent =
       `Данные по ${(data.stations || []).length} станциям` +
@@ -98,11 +96,6 @@ async function loadData() {
     document.getElementById("meta-generated").textContent = formatDateTime(data.generated_at);
 
     const footerSource = document.getElementById("footer-source");
-    if (data.source) {
-      footerSource.innerHTML = `Данные: <a href="${escapeHtml(data.source)}" target="_blank" rel="noopener">${escapeHtml(data.source)}</a>`;
-    }
-    document.getElementById("footer-generated").textContent =
-      "" + formatDateTime(data.generated_at);
 
     const stations = data.stations || [];
     if (stations.length === 0) {
