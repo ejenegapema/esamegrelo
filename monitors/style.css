@@ -45,7 +45,7 @@ body {
 }
 
 body {
-  background: radial-gradient(circle at 20% -10%, #14202e 0%, var(--bg) 45%);
+  background: #0a0a0f;
   color: var(--text-primary);
   font-family: var(--font-sans);
   line-height: 1.5;
