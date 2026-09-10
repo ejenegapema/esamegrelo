@@ -9,6 +9,25 @@
 <body>
 
 <div class="page">
+
+  <header class="page-header">
+    <span class="eyebrow"><span class="dot"></span>Климатический монитор</span>
+    <h1 id="page-title">Температура воздуха и количество осадков</h1>
+    <p class="subtitle" id="page-subtitle">Загрузка данных…</p>
+  </header>
+
+  <div class="meta-strip">
+    <div class="meta-item">
+      <span class="value" id="meta-period">—</span>
+    </div>
+    <div class="meta-item">
+      <span class="value" id="meta-source">—</span>
+    </div>
+    <div class="meta-item">
+      <span class="value" id="meta-generated">—</span>
+    </div>
+  </div>
+
   <div class="table-card">
     <div class="table-scroll">
       <table>
@@ -16,7 +35,7 @@
           <tr>
             <th class="col-id">WMO ID</th>
             <th class="col-name">Станция</th>
-            <th>Т средн.<span class="unit">°C</span></th>
+            <th>Т средняя<span class="unit">°C</span></th>
             <th>Норма<span class="unit">°C</span></th>
             <th>Отклонение<span class="unit">от нормы</span></th>
             <th>Осадки<span class="unit">мм</span></th>
@@ -98,11 +117,6 @@ async function loadData() {
     document.getElementById("meta-generated").textContent = formatDateTime(data.generated_at);
 
     const footerSource = document.getElementById("footer-source");
-    if (data.source) {
-      footerSource.innerHTML = `<a href="${escapeHtml(data.source)}" target="_blank" rel="noopener">${escapeHtml(data.source)}</a>`;
-    }
-    document.getElementById("footer-generated").textContent =
-      "" + formatDateTime(data.generated_at);
 
     const stations = data.stations || [];
     if (stations.length === 0) {
