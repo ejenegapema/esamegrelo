@@ -1,15 +1,14 @@
 <?php
 /**
  * Единый скрипт: климатический монитор pogodaiklimat.ru
- * Для списка станций (WMO id) и выбранных месяца/года собирает
- * фактическую температуру, норму, отклонение и осадки, парся
- * страницы monitor.php?id=ID&month=M&year=Y (по одной на станцию —
- * именно там реально работают параметры month/year).
+ * Для произвольного подмножества станций и выбранных месяца/года
+ * собирает температуру, норму, отклонение и осадки, парся страницы
+ * monitor.php?id=ID&month=M&year=Y (по одной на станцию).
  *
  * Режимы:
- *  - Web: открой скрипт в браузере — увидишь форму (месяц/год) и таблицу.
- *         Можно получить чистый JSON: ?format=json&month=9&year=2026
- *  - CLI: php monitors.php [month] [year] — сохранит stations.json рядом.
+ *  - Web: открой в браузере — форма (месяц/год + чекбоксы станций) и таблица.
+ *         JSON: ?format=json&month=9&year=2026&ids=27612,26063
+ *  - CLI: php monitors.php [month] [year] [ids=27612,26063]
  */
 
 declare(strict_types=1);
@@ -21,11 +20,8 @@ error_reporting(E_ALL & ~E_DEPRECATED);
 
 const STATION_BASE_URL = 'https://www.pogodaiklimat.ru/monitor.php';
 
-// Список станций произвольной длины: WMO id => подпись для чтения кода.
-// Проверено поиском: 27612, 26063, 26850, 29638, 26702, 30710.
-// Остальные id стоит перепроверить на странице
-// https://www.pogodaiklimat.ru/monitor.php?id=XXXXX (в подписи страницы
-// будет видно название станции).
+// Полный каталог станций: WMO id => подпись.
+// Через форму на странице можно выбирать произвольное подмножество.
 const TARGET_STATIONS = [
     27612 => 'Москва',
     26063 => 'Санкт-Петербург',
@@ -72,7 +68,7 @@ function logError(string $msg): void
 }
 
 // ==========================================================================
-//  0. МЕСЯЦ / ГОД
+//  0. МЕСЯЦ / ГОД / СПИСОК СТАНЦИЙ
 // ==========================================================================
 
 function resolvePeriod(): array
@@ -103,6 +99,56 @@ function resolvePeriod(): array
     return [$month, $year];
 }
 
+/**
+ * Возвращает массив [id => label] выбранных станций.
+ * Источники (в порядке приоритета):
+ *   - Web: GET-параметры ids (строка "27612,26063") или ids[]=... (массив).
+ *   - CLI: argv-параметр вида ids=27612,26063.
+ * Если ничего не задано — возвращает весь TARGET_STATIONS.
+ * Если задано, но валидных id не осталось — тоже весь список
+ * (защита от «пустой формы»).
+ */
+function resolveSelectedStations(): array
+{
+    $raw = [];
+
+    if (PHP_SAPI === 'cli') {
+        global $argv;
+        foreach ($argv ?? [] as $arg) {
+            if (strpos($arg, 'ids=') === 0) {
+                $raw = explode(',', substr($arg, 4));
+                break;
+            }
+        }
+    } else {
+        if (isset($_GET['ids'])) {
+            if (is_array($_GET['ids'])) {
+                $raw = $_GET['ids'];
+            } else {
+                $raw = explode(',', (string) $_GET['ids']);
+            }
+        }
+    }
+
+    $selected = [];
+    foreach ($raw as $item) {
+        $item = trim((string) $item);
+        if ($item === '' || !ctype_digit($item)) {
+            continue;
+        }
+        $id = (int) $item;
+        if (isset(TARGET_STATIONS[$id])) {
+            $selected[$id] = TARGET_STATIONS[$id];
+        }
+    }
+
+    if (empty($selected)) {
+        return TARGET_STATIONS;
+    }
+
+    return $selected;
+}
+
 function buildStationUrl(int $id, int $month, int $year): string
 {
     return STATION_BASE_URL . '?id=' . $id . '&month=' . $month . '&year=' . $year;
@@ -112,17 +158,11 @@ function buildStationUrl(int $id, int $month, int $year): string
 //  1. ПАРАЛЛЕЛЬНАЯ ЗАГРУЗКА СТРАНИЦ (curl_multi)
 // ==========================================================================
 
-/**
- * Скачивает сразу несколько URL параллельно.
- * @param array<int|string,string> $urlsByKey ключ => URL
- * @return array<int|string,?string> ключ => тело ответа или null при ошибке
- */
 function fetchManyPages(array $urlsByKey): array
 {
     $results = [];
 
     if (!function_exists('curl_multi_init')) {
-        // Fallback без cURL — последовательно через file_get_contents.
         foreach ($urlsByKey as $key => $url) {
             $context = stream_context_create([
                 'http' => [
@@ -202,7 +242,6 @@ function toUtf8(string $html): string
     return $converted !== false && $converted !== '' ? $converted : $html;
 }
 
-/** Превращает HTML-страницу в чистый текст (без тегов/скриптов) для регулярок. */
 function htmlToPlainText(string $utf8Html): string
 {
     $dom = new DOMDocument();
@@ -243,20 +282,22 @@ function parseStationText(string $plainText): array
         'name'           => null,
     ];
 
+    // Единицы (° и мм) намеренно НЕ включаем в значение — они уже есть
+    // в заголовках колонок, дублировать в ячейках не нужно.
     if (preg_match('/Норма\s+среднемесячной\s+температуры[^:]*:\s*' . $num . '\s*°/u', $plainText, $m)) {
-        $data['temp_norm'] = normalizeNumber($m[1]) . '°';
+        $data['temp_norm'] = normalizeNumber($m[1]);
     }
     if (preg_match('/Фактическая\s+температура\s+месяца[^:]*:\s*' . $num . '\s*°/u', $plainText, $m)) {
-        $data['temp_avg'] = normalizeNumber($m[1]) . '°';
+        $data['temp_avg'] = normalizeNumber($m[1]);
     }
     if (preg_match('/Отклонение\s+от\s+нормы\s*:\s*' . $num . '\s*°/u', $plainText, $m)) {
-        $data['temp_deviation'] = normalizeSigned($m[1]) . '°';
+        $data['temp_deviation'] = normalizeSigned($m[1]);
     }
     if (preg_match('/Норма\s+суммы\s+осадков[^:]*:\s*([0-9]+(?:[.,][0-9]+)?)\s*мм/u', $plainText, $m)) {
-        $data['precip_norm'] = normalizeNumber($m[1]) . ' мм';
+        $data['precip_norm'] = normalizeNumber($m[1]);
     }
     if (preg_match('/Выпало\s+осадков\s*:\s*([0-9]+(?:[.,][0-9]+)?)\s*мм/u', $plainText, $m)) {
-        $data['precip_fallen'] = normalizeNumber($m[1]) . ' мм';
+        $data['precip_fallen'] = normalizeNumber($m[1]);
     }
     if (preg_match('/составляет\s*([0-9]+(?:[.,][0-9]+)?)\s*%\s*от\s*нормы/u', $plainText, $m)) {
         $data['precip_percent'] = normalizeNumber($m[1]);
@@ -278,19 +319,19 @@ function normalizeSigned(string $raw): string
     $raw = str_replace('−', '-', trim($raw));
     $raw = str_replace(',', '.', $raw);
     if ($raw !== '' && $raw[0] !== '+' && $raw[0] !== '-') {
-        $raw = '+' . $raw; // на сайте отклонение всегда со знаком, подстрахуемся
+        $raw = '+' . $raw;
     }
     return $raw;
 }
 
 // ==========================================================================
-//  3. СБОРКА ДАННЫХ ПО ВСЕМ СТАНЦИЯМ
+//  3. СБОРКА ДАННЫХ ПО ВЫБРАННЫМ СТАНЦИЯМ
 // ==========================================================================
 
-function fetchAndParseAll(int $month, int $year): array
+function fetchAndParseAll(array $selectedStations, int $month, int $year): array
 {
     $urls = [];
-    foreach (TARGET_STATIONS as $id => $label) {
+    foreach ($selectedStations as $id => $label) {
         $urls[$id] = buildStationUrl($id, $month, $year);
     }
 
@@ -300,7 +341,7 @@ function fetchAndParseAll(int $month, int $year): array
     $stations = [];
     $missing  = [];
 
-    foreach (TARGET_STATIONS as $id => $label) {
+    foreach ($selectedStations as $id => $label) {
         $body = $bodies[$id] ?? null;
 
         if ($body === null) {
@@ -335,12 +376,13 @@ function fetchAndParseAll(int $month, int $year): array
     }
 
     return [
-        'month'        => $month,
-        'year'         => $year,
-        'period'       => monthName($month) . ' ' . $year,
-        'generated_at' => date('c'),
-        'stations'     => $stations,
-        'missing'      => $missing,
+        'month'         => $month,
+        'year'          => $year,
+        'period'        => monthName($month) . ' ' . $year,
+        'generated_at'  => date('c'),
+        'selected_ids'  => array_map('strval', array_keys($selectedStations)),
+        'stations'      => $stations,
+        'missing'       => $missing,
     ];
 }
 
@@ -393,7 +435,6 @@ function buildTableRowsHtml(array $stations): string
     $out = '';
     foreach ($stations as $s) {
         $monitorUrl = 'https://www.pogodaiklimat.ru/monitor.php?id=' . rawurlencode($s['wmo_id']);
-        $percent = $s['precip_percent'] !== null ? $s['precip_percent'] . '%' : null;
 
         $out .= "        <tr>\n";
         $out .= '          <td class="col-id">' . e($s['wmo_id']) . "</td>\n";
@@ -404,7 +445,7 @@ function buildTableRowsHtml(array $stations): string
         $out .= '          <td class="col-num">' . renderDeviationCell($s['temp_deviation']) . "</td>\n";
         $out .= '          <td class="col-num">' . renderPlainCell($s['precip_fallen']) . "</td>\n";
         $out .= '          <td class="col-num">' . renderPlainCell($s['precip_norm']) . "</td>\n";
-        $out .= '          <td class="col-num">' . renderPlainCell($percent) . "</td>\n";
+        $out .= '          <td class="col-num">' . renderPlainCell($s['precip_percent']) . "</td>\n";
         $out .= "        </tr>\n";
     }
     return $out;
@@ -420,12 +461,28 @@ function buildMonthOptionsHtml(int $selectedMonth): string
     return $out;
 }
 
-function renderPage(array $data, int $month, int $year): string
+function buildStationCheckboxesHtml(array $selectedIds): string
 {
-    $rows        = buildTableRowsHtml($data['stations']);
-    $monthOpts   = buildMonthOptionsHtml($month);
-    $total       = count($data['stations']);
-    $currentYear = (int) date('Y');
+    $selectedSet = array_flip(array_map('strval', $selectedIds));
+    $out = '';
+    foreach (TARGET_STATIONS as $id => $label) {
+        $checked = isset($selectedSet[(string) $id]) ? ' checked' : '';
+        $out .= '<label class="chk">'
+              . '<input type="checkbox" name="ids[]" value="' . $id . '"' . $checked . '> '
+              . e($label) . ' <span class="chk-id">' . $id . '</span>'
+              . "</label>\n";
+    }
+    return $out;
+}
+
+function renderPage(array $data, int $month, int $year, array $selectedStations): string
+{
+    $rows          = buildTableRowsHtml($data['stations']);
+    $monthOpts     = buildMonthOptionsHtml($month);
+    $stationsChks  = buildStationCheckboxesHtml(array_keys($selectedStations));
+    $total         = count($data['stations']);
+    $selectedTotal = count($selectedStations);
+    $currentYear   = (int) date('Y');
 
     $missingHtml = '';
     if (!empty($data['missing'])) {
@@ -450,14 +507,30 @@ function renderPage(array $data, int $month, int $year): string
   body { margin:0; background:var(--bg); color:var(--text); font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
   .page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
   h1 { font-size: 20px; margin: 0 0 16px; }
-  .controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:18px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 16px; }
-  .controls label { font-size:13px; color:var(--text-muted); }
-  .controls select, .controls input, .controls button {
+
+  form.controls { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:18px; }
+  .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .row:last-child { margin-bottom:0; }
+  .row label.top { font-size:13px; color:var(--text-muted); }
+  .row select, .row input[type="number"] {
     background:#11131a; color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:14px;
   }
-  .controls button { cursor:pointer; background:#2563eb; border-color:#2563eb; color:#fff; }
-  .controls button:hover { background:#1d4ed8; }
+  .row button {
+    cursor:pointer; background:#2563eb; border:1px solid #2563eb; color:#fff; border-radius:6px; padding:7px 14px; font-size:14px;
+  }
+  .row button:hover { background:#1d4ed8; }
+  .row button.secondary { background:transparent; border-color:var(--border); color:var(--text); }
+  .row button.secondary:hover { background:#1e2129; }
+
+  .stations-box { border:1px solid var(--border); border-radius:8px; padding:10px 12px; background:#11131a; }
+  .stations-title { font-size:12px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.05em; }
+  .stations-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap:6px 14px; }
+  label.chk { display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; user-select:none; }
+  label.chk input { accent-color:#2563eb; }
+  .chk-id { color:var(--text-muted); font-size:11px; margin-left:auto; }
+
   .meta-strip { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px; color:var(--text-muted); font-size:13px; }
+
   .table-card { background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
   .table-scroll { overflow-x:auto; }
   table { border-collapse:collapse; width:100%; font-size:13px; }
@@ -471,9 +544,10 @@ function renderPage(array $data, int $month, int $year): string
   .dev-pos { color:var(--pos); }
   .dev-neg { color:var(--neg); }
   .dev-zero, .dev-na { color:var(--zero); }
+
   .missing-note { margin-top:16px; padding:12px; border:1px solid #5a3a1a; background:#241a10; border-radius:8px; font-size:13px; color:#e2b98a; }
   .missing-note ul { margin:6px 0 0; padding-left:18px; }
-  .page-footer { margin-top:18px; font-size:12px; color:var(--text-muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .page-footer { margin-top:18px; font-size:12px; color:var(--text-muted); }
 </style>
 </head>
 <body>
@@ -482,20 +556,31 @@ function renderPage(array $data, int $month, int $year): string
   <h1>Температура воздуха и количество осадков</h1>
 
   <form class="controls" method="get">
-    <label for="month-select">Месяц</label>
-    <select id="month-select" name="month">
-      {$monthOpts}
-    </select>
+    <div class="row">
+      <label class="top" for="month-select">Месяц</label>
+      <select id="month-select" name="month">
+        {$monthOpts}
+      </select>
 
-    <label for="year-input">Год</label>
-    <input id="year-input" type="number" name="year" min="1900" max="{$currentYear}" value="{$year}">
+      <label class="top" for="year-input">Год</label>
+      <input id="year-input" type="number" name="year" min="1900" max="{$currentYear}" value="{$year}">
 
-    <button type="submit">Показать</button>
+      <button type="submit">Показать</button>
+      <button type="button" class="secondary" onclick="toggleAll(true)">Выбрать все</button>
+      <button type="button" class="secondary" onclick="toggleAll(false)">Снять все</button>
+    </div>
+
+    <div class="stations-box">
+      <div class="stations-title">Станции ({$selectedTotal} выбрано)</div>
+      <div class="stations-grid" id="stations-grid">
+        {$stationsChks}
+      </div>
+    </div>
   </form>
 
   <div class="meta-strip">
     <div>Период: <b>{$data['period']}</b></div>
-    <div>Станций: <b>{$total}</b></div>
+    <div>Показано станций: <b>{$total}</b></div>
     <div>Обновлено: {$data['generated_at']}</div>
   </div>
 
@@ -508,7 +593,7 @@ function renderPage(array $data, int $month, int $year): string
             <th class="col-name">Станция</th>
             <th>Т средняя<span class="unit">°C</span></th>
             <th>Норма<span class="unit">°C</span></th>
-            <th>Отклонение<span class="unit">от нормы</span></th>
+            <th>Отклонение<span class="unit">°C</span></th>
             <th>Осадки<span class="unit">мм</span></th>
             <th>Норма<span class="unit">мм</span></th>
             <th>% нормы<span class="unit">осадков</span></th>
@@ -524,10 +609,16 @@ function renderPage(array $data, int $month, int $year): string
   {$missingHtml}
 
   <div class="page-footer">
-    <span>Данные: pogodaiklimat.ru (страницы monitor.php по каждой станции)</span>
+    Данные: pogodaiklimat.ru (страницы monitor.php по каждой станции)
   </div>
 
 </div>
+
+<script>
+  function toggleAll(state) {
+    document.querySelectorAll('#stations-grid input[type="checkbox"]').forEach(cb => cb.checked = state);
+  }
+</script>
 </body>
 </html>
 HTML;
@@ -541,14 +632,15 @@ function runCli(): int
 {
     try {
         [$month, $year] = resolvePeriod();
-        $data = fetchAndParseAll($month, $year);
+        $selected = resolveSelectedStations();
+        $data = fetchAndParseAll($selected, $month, $year);
 
         file_put_contents(
             JSON_OUTPUT,
             json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
         );
         logLine('Данные сохранены: ' . JSON_OUTPUT . "\n");
-        logLine('Станций получено: ' . count($data['stations']) . ' из ' . count(TARGET_STATIONS) . "\n");
+        logLine('Станций получено: ' . count($data['stations']) . ' из ' . count($selected) . "\n");
 
         return 0;
     } catch (Throwable $e) {
@@ -567,9 +659,10 @@ function runHttp(): void
 
     $format = isset($_GET['format']) && $_GET['format'] === 'json' ? 'json' : 'html';
     [$month, $year] = resolvePeriod();
+    $selected = resolveSelectedStations();
 
     try {
-        $data = fetchAndParseAll($month, $year);
+        $data = fetchAndParseAll($selected, $month, $year);
     } catch (Throwable $e) {
         logError('Ошибка: ' . $e->getMessage() . "\n");
         http_response_code(502);
@@ -586,7 +679,7 @@ function runHttp(): void
     }
 
     header('Content-Type: text/html; charset=utf-8');
-    echo renderPage($data, $month, $year);
+    echo renderPage($data, $month, $year, $selected);
 }
 
 // ==========================================================================
