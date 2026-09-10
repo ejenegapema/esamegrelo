@@ -98,7 +98,6 @@ async function loadData() {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
 
-    document.getElementById("page-title").textContent = data.period || "Температура воздуха и количество осадков";
     document.getElementById("page-subtitle").textContent =
       `Данные по ${(data.stations || []).length} станциям` +
       (data.missing && data.missing.length ? ` · пропущено: ${data.missing.length}` : "");
