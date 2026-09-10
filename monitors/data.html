@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Температура воздуха и количество осадков</title>
+<link rel="stylesheet" href="https://isamegrelo.vercel.app/monitors/style.css">
+</head>
+<body>
+
+<div class="page">
+
+  <div class="controls">
+    <label for="month-select">Месяц</label>
+    <select id="month-select"></select>
+
+    <label for="year-select">Год</label>
+    <select id="year-select"></select>
+
+    <button id="apply-btn" type="button">Показать</button>
+  </div>
+
+  <div class="meta-strip">
+    <div class="meta-item">
+      <span class="value" id="meta-period">—</span>
+    </div>
+    <div class="meta-item">
+      <span class="value" id="meta-source">—</span>
+    </div>
+    <div class="meta-item">
+      <span class="value" id="meta-generated">—</span>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-id">WMO ID</th>
+            <th class="col-name">Станция</th>
+            <th>Т средняя<span class="unit">°C</span></th>
+            <th>Норма<span class="unit">°C</span></th>
+            <th>Отклонение<span class="unit">от нормы</span></th>
+            <th>Осадки<span class="unit">мм</span></th>
+            <th>Норма<span class="unit">мм</span></th>
+            <th>% нормы<span class="unit">осадков</span></th>
+          </tr>
+        </thead>
+        <tbody id="stations-body">
+          <tr>
+            <td colspan="8" style="text-align:center; color: var(--text-muted);">Загрузка данных…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer class="page-footer">
+    <span id="footer-source"></span>
+    <span id="footer-generated"></span>
+  </footer>
+
+</div>
+
+<script>
+const API_BASE = "https://isamegrelo.vercel.app/api/monitors.php";
+
+const MONTH_NAMES = [
+  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+];
+
+const today = new Date();
+const DEFAULT_MONTH = today.getMonth() + 1;
+const DEFAULT_YEAR  = today.getFullYear();
+const MIN_YEAR      = DEFAULT_YEAR - 60; // при необходимости расширьте диапазон
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function devClass(devStr) {
+  if (devStr === null || devStr === undefined || devStr === "") return "dev-na";
+  const s = String(devStr).trim();
+  if (s.startsWith("+")) return "dev-pos";
+  if (s.startsWith("-")) return "dev-neg";
+  return "dev-zero";
+}
+
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ` +
+           `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+  } catch (e) {
+    return iso;
+  }
+}
+
+/** Берёт month/year из query-параметров текущей страницы, иначе — текущие */
+function getInitialParams() {
+  const url = new URL(window.location.href);
+  let month = parseInt(url.searchParams.get("month"), 10);
+  let year  = parseInt(url.searchParams.get("year"), 10);
+
+  if (!month || month < 1 || month > 12) month = DEFAULT_MONTH;
+  if (!year || year < MIN_YEAR || year > DEFAULT_YEAR) year = DEFAULT_YEAR;
+
+  return { month, year };
+}
+
+function populateSelectors(month, year) {
+  const monthSelect = document.getElementById("month-select");
+  const yearSelect  = document.getElementById("year-select");
+
+  monthSelect.innerHTML = MONTH_NAMES.map((name, i) =>
+    `<option value="${i + 1}" ${i + 1 === month ? "selected" : ""}>${name}</option>`
+  ).join("");
+
+  let yearsHtml = "";
+  for (let y = DEFAULT_YEAR; y >= MIN_YEAR; y--) {
+    yearsHtml += `<option value="${y}" ${y === year ? "selected" : ""}>${y}</option>`;
+  }
+  yearSelect.innerHTML = yearsHtml;
+}
+
+function buildApiUrl(month, year) {
+  const u = new URL(API_BASE);
+  u.searchParams.set("format", "json");
+  u.searchParams.set("month", String(month));
+  u.searchParams.set("year", String(year));
+  return u.toString();
+}
+
+/** Обновляет адрес страницы, чтобы выбранный месяц/год можно было сохранить в закладки */
+function syncPageUrl(month, year) {
+  const u = new URL(window.location.href);
+  u.searchParams.set("month", String(month));
+  u.searchParams.set("year", String(year));
+  window.history.replaceState({}, "", u.toString());
+}
+
+async function loadData(month, year) {
+  const tbody = document.getElementById("stations-body");
+  tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted);">Загрузка данных…</td></tr>`;
+
+  try {
+    const res = await fetch(buildApiUrl(month, year), { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+
+    document.getElementById("meta-period").textContent = data.period || "—";
+
+    const sourceEl = document.getElementById("meta-source");
+    if (data.source) {
+      sourceEl.innerHTML = `<a href="${escapeHtml(data.source)}" target="_blank" rel="noopener">${escapeHtml(data.source.replace(/^https?:\/\//, ""))}</a>`;
+    } else {
+      sourceEl.textContent = "—";
+    }
+
+    document.getElementById("meta-generated").textContent = formatDateTime(data.generated_at);
+
+    const stations = data.stations || [];
+    if (stations.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted);">Нет данных</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = stations.map((st) => {
+      const dClass = devClass(st.temp_deviation);
+      return `
+        <tr>
+          <td class="col-id">${escapeHtml(st.wmo_id ?? st.index ?? "")}</td>
+          <td class="col-name">${escapeHtml(st.name ?? "")}</td>
+          <td class="col-num">${st.temp_avg !== undefined && st.temp_avg !== null && st.temp_avg !== "" ? escapeHtml(st.temp_avg) : '<span class="cell-na">н/д</span>'}</td>
+          <td class="col-num">${st.temp_norm !== undefined && st.temp_norm !== null && st.temp_norm !== "" ? escapeHtml(st.temp_norm) : '<span class="cell-na">н/д</span>'}</td>
+          <td class="col-num">${st.temp_deviation ? `<span class="dev ${dClass}">${escapeHtml(st.temp_deviation)}</span>` : '<span class="cell-na">н/д</span>'}</td>
+          <td class="col-num">${st.precip_fallen !== undefined && st.precip_fallen !== null && st.precip_fallen !== "" ? escapeHtml(st.precip_fallen) : '<span class="cell-na">н/д</span>'}</td>
+          <td class="col-num">${st.precip_norm !== undefined && st.precip_norm !== null && st.precip_norm !== "" ? escapeHtml(st.precip_norm) : '<span class="cell-na">н/д</span>'}</td>
+          <td class="col-num">${st.precip_percent !== undefined && st.precip_percent !== null && st.precip_percent !== "" ? escapeHtml(st.precip_percent) + "%" : '<span class="cell-na">н/д</span>'}</td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--pos);">Ошибка загрузки данных: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function init() {
+  const { month, year } = getInitialParams();
+  populateSelectors(month, year);
+  syncPageUrl(month, year);
+  loadData(month, year);
+
+  document.getElementById("apply-btn").addEventListener("click", () => {
+    const m = parseInt(document.getElementById("month-select").value, 10);
+    const y = parseInt(document.getElementById("year-select").value, 10);
+    syncPageUrl(m, y);
+    loadData(m, y);
+  });
+}
+
+init();
+</script>
+
+</body>
+</html>
