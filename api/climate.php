@@ -1,46 +1,5 @@
 <?php
 
-/*
-|--------------------------------------------------------------------------
-| ERA5 1000–925 hPa TEMPERATURE ANOMALY
-|--------------------------------------------------------------------------
-|
-| Select:
-|   - Full Year (January–December)
-|   - January ... December
-|   - DJF
-|   - MAM
-|   - JJA
-|   - SON
-|
-| For DJF:
-|
-|   DJF 2020 =
-|   December 2019 + January 2020 + February 2020
-|
-| Temperature:
-|
-|   T(K) =
-|      (Phi925 - Phi1000)
-|      ---------------------------
-|      Rd * ln(1000 / 925)
-|
-| Anomaly:
-|
-|   selected-period temperature
-|   -
-|   all-period climatological mean
-|
-|--------------------------------------------------------------------------
-*/
-
-
-/*
-|--------------------------------------------------------------------------
-| LOCATION / PERIOD
-|--------------------------------------------------------------------------
-*/
-
 $latitude =
     isset($_GET['lat'])
         ? (float)$_GET['lat']
@@ -72,6 +31,10 @@ if ($latitude < -90 || $latitude > 90) {
 |--------------------------------------------------------------------------
 | NORMALIZE LONGITUDE
 |--------------------------------------------------------------------------
+|
+| Internally:
+|   0 ... <360
+|--------------------------------------------------------------------------
 */
 
 $longitude =
@@ -84,17 +47,16 @@ if ($longitude < 0) {
 
 /*
 |--------------------------------------------------------------------------
-| ERA5 0.25° GRID INDEX
+| ERA5 0.25° GRID
 |--------------------------------------------------------------------------
 |
 | Latitude:
 |
-|   index = (latitude + 90) * 4
+|   index = (lat + 90) * 4
 |
 | Longitude:
 |
-|   index = longitude * 4
-|
+|   index = lon * 4
 |--------------------------------------------------------------------------
 */
 
@@ -111,7 +73,7 @@ $longitudeIndex =
 
 /*
 |--------------------------------------------------------------------------
-| KEEP INDEX INSIDE GRID
+| GRID LIMITS
 |--------------------------------------------------------------------------
 */
 
@@ -149,7 +111,7 @@ $actualLongitude =
 
 /*
 |--------------------------------------------------------------------------
-| OPeNDAP URLS
+| DATASET URLS
 |--------------------------------------------------------------------------
 |
 | 925 hPa:
@@ -158,9 +120,7 @@ $actualLongitude =
 | 1000 hPa:
 |   level index 0
 |
-| [0:]:
-|   all available time values
-|
+| [0:] = complete time dimension
 |--------------------------------------------------------------------------
 */
 
@@ -172,6 +132,7 @@ $url_925 =
     '][' .
     $longitudeIndex .
     ']';
+
 
 $url_1000 =
     'https://apdrc.soest.hawaii.edu/dods/public_data/' .
@@ -194,11 +155,8 @@ function getValues(string $url): array
     $context =
         stream_context_create([
             'http' => [
-                'timeout' =>
-                    120,
-
-                'ignore_errors' =>
-                    true,
+                'timeout' => 120,
+                'ignore_errors' => true,
             ],
         ]);
 
@@ -221,7 +179,7 @@ function getValues(string $url): array
 
 
     /*
-     * Typical APDRC line:
+     * Typical APDRC data:
      *
      * [0][3][530][168], 7644.9766
      */
@@ -277,7 +235,7 @@ function getValues(string $url): array
 
 /*
 |--------------------------------------------------------------------------
-| LOAD GEOPOTENTIAL
+| LOAD DATA
 |--------------------------------------------------------------------------
 */
 
@@ -290,7 +248,7 @@ $phi1000 =
 
 /*
 |--------------------------------------------------------------------------
-| SAME NUMBER OF MONTHS?
+| VALIDATE DATA LENGTH
 |--------------------------------------------------------------------------
 */
 
@@ -314,14 +272,33 @@ $n =
     count($phi925);
 
 
+if ($n < 12) {
+
+    die(
+        "At least 12 months of data are required."
+    );
+}
+
+
 /*
 |--------------------------------------------------------------------------
-| HYPSOMETRIC CONSTANT
+| HYPSOMETRIC EQUATION
+|--------------------------------------------------------------------------
+|
+| ERA5 zg = geopotential Φ [m²/s²]
+|
+| T(K) =
+|
+| (Phi925 - Phi1000)
+| -----------------------------
+| Rd × ln(1000 / 925)
+|
 |--------------------------------------------------------------------------
 */
 
 $Rd =
     287.05;
+
 
 $denominator =
     $Rd *
@@ -332,11 +309,9 @@ $denominator =
 
 /*
 |--------------------------------------------------------------------------
-| MONTHLY LAYER TEMPERATURE
-|--------------------------------------------------------------------------
+| STEP 1
 |
-| ERA5 zg is geopotential Phi in m²/s².
-|
+| MONTHLY 1000–925 hPa TEMPERATURE
 |--------------------------------------------------------------------------
 */
 
@@ -345,6 +320,9 @@ $monthlyTemperatureC = [];
 
 for ($i = 0; $i < $n; $i++) {
 
+    /*
+     * Geopotential thickness in geopotential units.
+     */
     $deltaPhi =
         $phi925[$i] -
         $phi1000[$i];
@@ -377,7 +355,8 @@ for ($i = 0; $i < $n; $i++) {
 |--------------------------------------------------------------------------
 |
 | IMPORTANT:
-| This must match the first month of the APDRC dataset.
+|
+| Change this if the APDRC time series starts at another month.
 |--------------------------------------------------------------------------
 */
 
@@ -389,12 +368,13 @@ $startDate =
 
 /*
 |--------------------------------------------------------------------------
-| CREATE YEAR / MONTH ARRAYS
+| CREATE TIME ARRAYS
 |--------------------------------------------------------------------------
 */
 
 $years = [];
 $months = [];
+$dates = [];
 
 
 for ($i = 0; $i < $n; $i++) {
@@ -411,57 +391,14 @@ for ($i = 0; $i < $n; $i++) {
     $years[$i] =
         (int)$date->format('Y');
 
+
     $months[$i] =
         (int)$date->format('n');
+
+
+    $dates[$i] =
+        $date->format('Y-m-d');
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| MONTH NAMES
-|--------------------------------------------------------------------------
-*/
-
-$monthNames = [
-
-    1  => 'January',
-    2  => 'February',
-    3  => 'March',
-    4  => 'April',
-    5  => 'May',
-    6  => 'June',
-    7  => 'July',
-    8  => 'August',
-    9  => 'September',
-    10 => 'October',
-    11 => 'November',
-    12 => 'December'
-
-];
-
-
-/*
-|--------------------------------------------------------------------------
-| MONTH CODES
-|--------------------------------------------------------------------------
-*/
-
-$monthCodes = [
-
-    'JAN' => 1,
-    'FEB' => 2,
-    'MAR' => 3,
-    'APR' => 4,
-    'MAY' => 5,
-    'JUN' => 6,
-    'JUL' => 7,
-    'AUG' => 8,
-    'SEP' => 9,
-    'OCT' => 10,
-    'NOV' => 11,
-    'DEC' => 12
-
-];
 
 
 /*
@@ -500,11 +437,8 @@ for ($i = 0; $i < $n; $i++) {
 | MONTH CLIMATOLOGY
 |--------------------------------------------------------------------------
 |
-| Each month's normal is calculated from ALL
-| available values of that same month.
-|
-| January normal = mean(all Januaries)
-| February normal = mean(all Februaries)
+| All available Januaries
+| All available Februaries
 | ...
 |--------------------------------------------------------------------------
 */
@@ -515,6 +449,7 @@ $monthSums =
         12,
         0.0
     );
+
 
 $monthCounts =
     array_fill(
@@ -564,40 +499,45 @@ for ($month = 1; $month <= 12; $month++) {
 
 /*
 |--------------------------------------------------------------------------
-| FULL-YEAR TEMPERATURE
+| FULL YEAR TEMPERATURE
 |--------------------------------------------------------------------------
 |
-| Year temperature =
-| mean of January ... December.
+| Full year = mean of Jan...Dec.
 |--------------------------------------------------------------------------
 */
 
 $yearTemperature = [];
 
 
-foreach ($yearlyData as $year => $info) {
+foreach (
+    $yearlyData
+    as $year => $info
+) {
 
+    /*
+     * Require all 12 months.
+     */
     if (
         count($info['months']) === 12
     ) {
 
-        $sum =
+        $yearTemperature[$year] =
             array_sum(
                 $info['months']
-            );
-
-
-        $yearTemperature[$year] =
-            $sum / 12.0;
+            ) / 12.0;
     }
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| FULL-YEAR CLIMATE NORMAL
+| FULL YEAR CLIMATE NORMAL
 |--------------------------------------------------------------------------
 */
+
+$yearClimate =
+    null;
+
 
 if (!empty($yearTemperature)) {
 
@@ -606,26 +546,125 @@ if (!empty($yearTemperature)) {
             $yearTemperature
         ) /
         count($yearTemperature);
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| 12-MONTH ROLLING TEMPERATURE
+|--------------------------------------------------------------------------
+|
+| trailing 12-month mean:
+|
+|   T12(i) =
+|   mean(
+|       T(i-11),
+|       ...
+|       T(i)
+|   )
+|--------------------------------------------------------------------------
+*/
+
+$rolling12 =
+    array_fill(
+        0,
+        $n,
+        null
+    );
+
+
+/*
+ * Prefix sum for O(N) calculation.
+ */
+$prefix =
+    array_fill(
+        0,
+        $n + 1,
+        0.0
+    );
+
+
+for ($i = 0; $i < $n; $i++) {
+
+    $prefix[$i + 1] =
+        $prefix[$i] +
+        $monthlyTemperatureC[$i];
+}
+
+
+for ($i = 11; $i < $n; $i++) {
+
+    $start =
+        $i - 11;
+
+
+    $sum =
+        $prefix[$i + 1] -
+        $prefix[$start];
+
+
+    $rolling12[$i] =
+        $sum / 12.0;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| 12-MONTH ALL-PERIOD CLIMATE NORMAL
+|--------------------------------------------------------------------------
+|
+| IMPORTANT:
+|
+| This is the mean of ALL available 12-month
+| rolling-temperature values.
+|
+| It is NOT a moving 30-year normal.
+|--------------------------------------------------------------------------
+*/
+
+$rolling12Sum =
+    0.0;
+
+
+$rolling12Count =
+    0;
+
+
+for ($i = 0; $i < $n; $i++) {
+
+    if ($rolling12[$i] !== null) {
+
+        $rolling12Sum +=
+            $rolling12[$i];
+
+        $rolling12Count++;
+    }
+}
+
+
+if ($rolling12Count > 0) {
+
+    $rolling12Climate =
+        $rolling12Sum /
+        $rolling12Count;
 
 } else {
 
-    $yearClimate =
+    $rolling12Climate =
         null;
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| SEASON DEFINITIONS
+| SEASONS
 |--------------------------------------------------------------------------
 |
-| IMPORTANT:
+| DJF 2020:
 |
-| DJF 2020 =
-|
-| December 2019
-| January  2020
-| February 2020
+|   December 2019
+|   January  2020
+|   February 2020
 |
 |--------------------------------------------------------------------------
 */
@@ -678,10 +717,8 @@ foreach (
 
 
     /*
-     * The year means the year of January/February.
-     *
-     * Example:
-     * DJF 2020 -> Dec 2019 + Jan 2020 + Feb 2020
+     * The season year is the year containing
+     * January and February.
      */
     foreach (
         $yearlyData
@@ -696,14 +733,14 @@ foreach (
             as $month
         ) {
 
+            /*
+             * DJF December comes from previous year.
+             */
             if (
                 $season === 'DJF' &&
                 $month === 12
             ) {
 
-                /*
-                 * December belongs to previous year.
-                 */
                 $targetYear =
                     $year - 1;
 
@@ -731,7 +768,7 @@ foreach (
 
 
         /*
-         * Require all three months.
+         * Require all 3 months.
          */
         if (count($values) === 3) {
 
@@ -773,13 +810,15 @@ foreach (
 
 /*
 |--------------------------------------------------------------------------
-| VALID PERIODS
+| PERIOD DEFINITIONS
 |--------------------------------------------------------------------------
 */
 
 $validPeriods = [
 
     'YEAR',
+
+    'ROLL12',
 
     'JAN',
     'FEB',
@@ -817,7 +856,31 @@ if (
 
 /*
 |--------------------------------------------------------------------------
-| PREPARE CHART SERIES
+| MONTH CODE MAP
+|--------------------------------------------------------------------------
+*/
+
+$monthCodes = [
+
+    'JAN' => 1,
+    'FEB' => 2,
+    'MAR' => 3,
+    'APR' => 4,
+    'MAY' => 5,
+    'JUN' => 6,
+    'JUL' => 7,
+    'AUG' => 8,
+    'SEP' => 9,
+    'OCT' => 10,
+    'NOV' => 11,
+    'DEC' => 12
+
+];
+
+
+/*
+|--------------------------------------------------------------------------
+| PREPARE CHART DATA
 |--------------------------------------------------------------------------
 */
 
@@ -832,36 +895,73 @@ $chartRows = [];
 
 if ($period === 'YEAR') {
 
-    foreach (
-        $yearTemperature
-        as $year => $temperature
-    ) {
+    if ($yearClimate !== null) {
 
-        if ($yearClimate === null) {
-            continue;
+        foreach (
+            $yearTemperature
+            as $year => $temperature
+        ) {
+
+            $anomaly =
+                $temperature -
+                $yearClimate;
+
+
+            $chartRows[] = [
+
+                'x' =>
+                    $year . '-01-01',
+
+                'anomaly' =>
+                    round(
+                        $anomaly,
+                        1
+                    )
+
+            ];
         }
+    }
 
 
-        $anomaly =
-            $temperature -
-            $yearClimate;
+/*
+|--------------------------------------------------------------------------
+| 12-MONTH ROLLING
+|--------------------------------------------------------------------------
+|
+| Climate normal =
+| mean of ALL available 12-month rolling values.
+|--------------------------------------------------------------------------
+*/
+
+} elseif ($period === 'ROLL12') {
+
+    if ($rolling12Climate !== null) {
+
+        for ($i = 11; $i < $n; $i++) {
+
+            if ($rolling12[$i] === null) {
+                continue;
+            }
 
 
-        $chartRows[] = [
+            $anomaly =
+                $rolling12[$i] -
+                $rolling12Climate;
 
-            'x' =>
-                $year . '-01-01',
 
-            /*
-             * EXACTLY ONE DECIMAL.
-             */
-            'anomaly' =>
-                round(
-                    $anomaly,
-                    1
-                )
+            $chartRows[] = [
 
-        ];
+                'x' =>
+                    $dates[$i],
+
+                'anomaly' =>
+                    round(
+                        $anomaly,
+                        1
+                    )
+
+            ];
+        }
     }
 
 
@@ -879,6 +979,7 @@ if ($period === 'YEAR') {
 
     $month =
         $monthCodes[$period];
+
 
     $climate =
         $monthClimate[$month];
@@ -914,9 +1015,6 @@ if ($period === 'YEAR') {
                 'x' =>
                     $year . '-01-01',
 
-                /*
-                 * EXACTLY ONE DECIMAL.
-                 */
                 'anomaly' =>
                     round(
                         $anomaly,
@@ -961,9 +1059,6 @@ if ($period === 'YEAR') {
                 'x' =>
                     $year . '-01-01',
 
-                /*
-                 * EXACTLY ONE DECIMAL.
-                 */
                 'anomaly' =>
                     round(
                         $anomaly,
@@ -978,7 +1073,7 @@ if ($period === 'YEAR') {
 
 /*
 |--------------------------------------------------------------------------
-| SORT BY DATE
+| SORT CHART DATA
 |--------------------------------------------------------------------------
 */
 
@@ -1036,7 +1131,7 @@ $json =
 
 <link
     rel="preconnect"
-    href="https://fonts.googleapis.com"
+    href="https://fonts.gstatic.com"
     crossorigin
 >
 
@@ -1058,7 +1153,7 @@ $json =
 <style>
 
 /* =========================================================
-   USER STYLE
+   YOUR STYLE
 ========================================================= */
 
 * {
@@ -1189,7 +1284,7 @@ select {
 <div class="date-picker">
 
 
-    <!-- PERIOD -->
+    <!-- PERIOD SELECTOR -->
 
     <div class="period-row">
 
@@ -1203,10 +1298,7 @@ select {
             onchange="changePeriod()"
         >
 
-
-            <optgroup
-                label="Annual"
-            >
+            <optgroup label="Annual">
 
                 <option
                     value="YEAR"
@@ -1218,15 +1310,36 @@ select {
                     (January–December)
                 </option>
 
+
+                <option
+                    value="ROLL12"
+                    <?= $period === 'ROLL12'
+                        ? 'selected'
+                        : '' ?>
+                >
+                    12-Month Rolling
+                </option>
+
             </optgroup>
 
 
-            <optgroup
-                label="Months"
-            >
+            <optgroup label="Months">
 
                 <?php foreach (
-                    $monthNames
+                    $monthNames = [
+                        1  => 'January',
+                        2  => 'February',
+                        3  => 'March',
+                        4  => 'April',
+                        5  => 'May',
+                        6  => 'June',
+                        7  => 'July',
+                        8  => 'August',
+                        9  => 'September',
+                        10 => 'October',
+                        11 => 'November',
+                        12 => 'December'
+                    ]
                     as $number => $name
                 ): ?>
 
@@ -1247,9 +1360,7 @@ select {
                             ? 'selected'
                             : '' ?>
                     >
-                        <?= htmlspecialchars(
-                            $name
-                        ) ?>
+                        <?= htmlspecialchars($name) ?>
                     </option>
 
                 <?php endforeach; ?>
@@ -1257,9 +1368,7 @@ select {
             </optgroup>
 
 
-            <optgroup
-                label="Seasons"
-            >
+            <optgroup label="Seasons">
 
                 <option
                     value="DJF"
@@ -1301,7 +1410,6 @@ select {
                 </option>
 
             </optgroup>
-
 
         </select>
 
@@ -1488,10 +1596,8 @@ new Chart(
                     label:
                         'Temperature anomaly',
 
-
                     data:
                         data,
-
 
                     parsing: {
 
@@ -1503,30 +1609,23 @@ new Chart(
 
                     },
 
-
                     borderColor:
                         '#ffffff',
-
 
                     backgroundColor:
                         'transparent',
 
-
                     borderWidth:
                         2.5,
-
 
                     pointRadius:
                         0,
 
-
                     pointHoverRadius:
                         5,
 
-
                     tension:
                         0.12,
-
 
                     fill:
                         false
@@ -1548,10 +1647,8 @@ new Chart(
             responsive:
                 true,
 
-
             maintainAspectRatio:
                 false,
-
 
             interaction: {
 
@@ -1571,7 +1668,6 @@ new Chart(
                     type:
                         'time',
 
-
                     time: {
 
                         unit:
@@ -1582,7 +1678,6 @@ new Chart(
 
                     },
 
-
                     grid: {
 
                         color:
@@ -1590,14 +1685,12 @@ new Chart(
 
                     },
 
-
                     ticks: {
 
                         color:
                             '#94a3b8'
 
                     },
-
 
                     title: {
 
@@ -1624,12 +1717,10 @@ new Chart(
 
                     },
 
-
                     ticks: {
 
                         color:
                             '#94a3b8',
-
 
                         callback:
                             function(value) {
@@ -1637,22 +1728,20 @@ new Chart(
                                 const number =
                                     Number(value);
 
-
                                 const sign =
                                     number > 0
                                         ? '+'
                                         : '';
-
 
                                 return (
                                     sign +
                                     number.toFixed(1) +
                                     ' °C'
                                 );
+
                             }
 
                     },
-
 
                     title: {
 
@@ -1693,9 +1782,7 @@ new Chart(
                         title:
                             function(items) {
 
-                                if (
-                                    !items.length
-                                ) {
+                                if (!items.length) {
                                     return '';
                                 }
 
@@ -1789,7 +1876,7 @@ function changePeriod()
 
 function loadLocation()
 {
-    const latitude =
+    const lat =
         document
             .getElementById(
                 'latitude'
@@ -1797,7 +1884,7 @@ function loadLocation()
             .value;
 
 
-    const longitude =
+    const lon =
         document
             .getElementById(
                 'longitude'
@@ -1819,13 +1906,13 @@ function loadLocation()
 
     params.set(
         'lat',
-        latitude
+        lat
     );
 
 
     params.set(
         'lon',
-        longitude
+        lon
     );
 
 
