@@ -2,7 +2,7 @@
 
 $url = 'https://apdrc.soest.hawaii.edu/dods/public_data/'
      . 'Reanalysis_Data/ERA5/monthly_3d/'
-     . 'Geopotential.ascii?zg[0:5][3][530][168]';
+     . 'Geopotential.ascii?zg[0:1039][3][530][168]';
 
 $context = stream_context_create([
     'http' => [
@@ -16,9 +16,9 @@ if ($text === false) {
     exit("Download failed. Check DNS/network connectivity.\n");
 }
 
-// Match rows such as:
+// Match indexed rows such as:
 // [0][0][0], 7644.9766
-// Also handles several comma-separated values on a row.
+// Also handles multiple comma-separated values.
 preg_match_all(
     '/^\s*(?:\[\d+\])+\s*,\s*([^\r\n]+)/m',
     $text,
@@ -37,11 +37,11 @@ foreach ($matches[1] as $row) {
     }
 }
 
-if (!$values) {
+if (empty($values)) {
     exit("No indexed values found. Inspect the downloaded ASCII response.\n");
 }
 
-print_r($values);
-
-echo 'First: ' . $values[0] . PHP_EOL;
-echo 'Last: ' . $values[count($values) - 1] . PHP_EOL;
+// Print ONLY the floating-point values.
+foreach ($values as $value) {
+    echo $value . PHP_EOL;
+}
