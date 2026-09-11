@@ -1206,8 +1206,8 @@ button {
   padding: 4px 8px;
   border-radius: 8px;
   border: none;
-  background: #0906c4;
-  color: #000;
+  background: #3b82f6;
+  color: #ffffff;
   font-weight: 600;
   cursor: pointer;
   margin-left: 5px;
@@ -1456,7 +1456,7 @@ select {
             type="button"
             onclick="loadLocation()"
         >
-            Load location
+            Update
         </button>
 
     </div>
@@ -1688,7 +1688,11 @@ new Chart(
                     ticks: {
 
                         color:
-                            '#94a3b8'
+                            '#94a3b8',
+                        maxRotation: 
+                            90,
+                        minRotation: 
+                            90
 
                     },
 
