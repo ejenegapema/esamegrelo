@@ -2,12 +2,14 @@
 
 /*
 |--------------------------------------------------------------------------
-| SETTINGS
+| LOCATION
 |--------------------------------------------------------------------------
 */
 
 $latitude  = isset($_GET['lat']) ? (float)$_GET['lat'] : 42.5;
 $longitude = isset($_GET['lon']) ? (float)$_GET['lon'] : 42.0;
+
+$period = isset($_GET['period']) ? strtoupper($_GET['period']) : 'ALL';
 
 
 /*
@@ -36,20 +38,13 @@ if ($longitude < 0) {
 
 /*
 |--------------------------------------------------------------------------
-| ERA5 GRID INDEX
+| ERA5 GRID
 |--------------------------------------------------------------------------
 |
-| Latitude:
-|   -90 ... +90
-|   step 0.25°
+| 0.25° grid:
 |
-| index = (lat + 90) * 4
-|
-| Longitude:
-|   0 ... 359.75
-|   step 0.25°
-|
-| index = lon * 4
+| latitude index  = (lat + 90) * 4
+| longitude index = lon * 4
 |
 |--------------------------------------------------------------------------
 */
@@ -60,25 +55,12 @@ $latitudeIndex =
 $longitudeIndex =
     (int)round($longitude * 4.0);
 
-
-/*
-|--------------------------------------------------------------------------
-| Keep indices inside the ERA5 grid
-|--------------------------------------------------------------------------
-*/
-
 $latitudeIndex =
     max(0, min(720, $latitudeIndex));
 
 $longitudeIndex =
     max(0, min(1439, $longitudeIndex));
 
-
-/*
-|--------------------------------------------------------------------------
-| Actual grid coordinates after snapping
-|--------------------------------------------------------------------------
-*/
 
 $actualLatitude =
     $latitudeIndex / 4.0 - 90.0;
@@ -89,34 +71,36 @@ $actualLongitude =
 
 /*
 |--------------------------------------------------------------------------
-| URLs
+| DATASET URLS
 |--------------------------------------------------------------------------
 |
-| [0:] = complete available time dimension
-|
-| 925 hPa = level index 3
+| 925 hPa  = level index 3
 | 1000 hPa = level index 0
+|
+| [0:] = complete time dimension
+|
 |--------------------------------------------------------------------------
 */
 
 $url_925 =
     'https://apdrc.soest.hawaii.edu/dods/public_data/' .
     'Reanalysis_Data/ERA5/monthly_3d/' .
-    'Geopotential.ascii?zg[0:1039][3][' .
+    'Geopotential.ascii?zg[0:][3][' .
     $latitudeIndex . '][' .
     $longitudeIndex . ']';
+
 
 $url_1000 =
     'https://apdrc.soest.hawaii.edu/dods/public_data/' .
     'Reanalysis_Data/ERA5/monthly_3d/' .
-    'Geopotential.ascii?zg[0:1039][0][' .
+    'Geopotential.ascii?zg[0:][0][' .
     $latitudeIndex . '][' .
     $longitudeIndex . ']';
 
 
 /*
 |--------------------------------------------------------------------------
-| DOWNLOAD + PARSE DATA
+| DOWNLOAD + PARSE
 |--------------------------------------------------------------------------
 */
 
@@ -148,8 +132,6 @@ function getValues(string $url): array
      * Example:
      *
      * [0][3][530][168], 12345.678
-     *
-     * Everything after the comma is parsed.
      */
     preg_match_all(
         '/^\s*(?:\[\d+\])+\s*,\s*(.*?)\s*$/m',
@@ -172,8 +154,7 @@ function getValues(string $url): array
 
         foreach ($numbers[0] as $number) {
 
-            $value =
-                (float)$number;
+            $value = (float)$number;
 
             if (is_finite($value)) {
                 $values[] = $value;
@@ -183,7 +164,6 @@ function getValues(string $url): array
 
 
     if (empty($values)) {
-
         die(
             "No numeric values found:<br><br>" .
             htmlspecialchars($url)
@@ -197,22 +177,13 @@ function getValues(string $url): array
 
 /*
 |--------------------------------------------------------------------------
-| DOWNLOAD BOTH LEVELS
+| GET DATA
 |--------------------------------------------------------------------------
 */
 
-$phi925 =
-    getValues($url_925);
+$phi925  = getValues($url_925);
+$phi1000 = getValues($url_1000);
 
-$phi1000 =
-    getValues($url_1000);
-
-
-/*
-|--------------------------------------------------------------------------
-| VALIDATE
-|--------------------------------------------------------------------------
-*/
 
 if (count($phi925) !== count($phi1000)) {
 
@@ -227,28 +198,26 @@ if (count($phi925) !== count($phi1000)) {
 }
 
 
-$n =
-    count($phi925);
+$n = count($phi925);
 
 
 /*
 |--------------------------------------------------------------------------
-| HYPSOMETRIC CONSTANT
+| HYPSOMETRIC CALCULATION
 |--------------------------------------------------------------------------
 |
-| ERA5 zg = geopotential Φ in m²/s²
+| ERA5 zg is geopotential Φ in m²/s².
 |
 | T(K) =
 |
 | (Φ925 - Φ1000)
-| ----------------------------
-| Rd × ln(1000 / 925)
+| --------------------------
+| Rd * ln(1000 / 925)
 |
 |--------------------------------------------------------------------------
 */
 
-$Rd =
-    287.05;
+$Rd = 287.05;
 
 $denominator =
     $Rd *
@@ -257,9 +226,7 @@ $denominator =
 
 /*
 |--------------------------------------------------------------------------
-| STEP 1
-|
-| MONTHLY 1000–925 hPa LAYER TEMPERATURE
+| MONTHLY TEMPERATURE
 |--------------------------------------------------------------------------
 */
 
@@ -273,17 +240,11 @@ for ($i = 0; $i < $n; $i++) {
         $phi1000[$i];
 
 
-    /*
-     * Kelvin
-     */
     $temperatureK =
         $deltaPhi /
         $denominator;
 
 
-    /*
-     * Celsius
-     */
     $temperatureC =
         $temperatureK -
         273.15;
@@ -296,153 +257,12 @@ for ($i = 0; $i < $n; $i++) {
 
 /*
 |--------------------------------------------------------------------------
-| STEP 2
-|
-| 12-MONTH ROLLING MEAN
-|--------------------------------------------------------------------------
-|
-| rolling12[i] =
-|
-| mean of:
-|
-| i-11 ... i
-|
-|--------------------------------------------------------------------------
-*/
-
-
-$rolling12 =
-    array_fill(
-        0,
-        $n,
-        null
-    );
-
-
-/*
- * Prefix sum for efficient O(N) rolling calculation.
- */
-
-$prefix =
-    array_fill(
-        0,
-        $n + 1,
-        0.0
-    );
-
-
-for ($i = 0; $i < $n; $i++) {
-
-    $prefix[$i + 1] =
-        $prefix[$i] +
-        $monthlyTemperatureC[$i];
-}
-
-
-for ($i = 11; $i < $n; $i++) {
-
-    $start =
-        $i - 11;
-
-
-    $sum =
-        $prefix[$i + 1] -
-        $prefix[$start];
-
-
-    $rolling12[$i] =
-        $sum / 12.0;
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| STEP 3
-|
-| ONE CLIMATE NORMAL
-|
-| Mean of ALL available 12-month rolling values.
-|--------------------------------------------------------------------------
-*/
-
-$sumRolling =
-    0.0;
-
-$countRolling =
-    0;
-
-
-foreach ($rolling12 as $value) {
-
-    if (
-        $value !== null &&
-        is_finite($value)
-    ) {
-
-        $sumRolling +=
-            $value;
-
-        $countRolling++;
-    }
-}
-
-
-if ($countRolling === 0) {
-
-    die(
-        "Could not calculate 12-month rolling climate normal."
-    );
-}
-
-
-$climateNormal =
-    $sumRolling /
-    $countRolling;
-
-
-/*
-|--------------------------------------------------------------------------
-| STEP 4
-|
-| TEMPERATURE ANOMALY
-|
-| anomaly =
-|
-| rolling12 temperature
-| -
-| ALL-PERIOD climate normal
-|--------------------------------------------------------------------------
-*/
-
-$anomaly =
-    array_fill(
-        0,
-        $n,
-        null
-    );
-
-
-for ($i = 0; $i < $n; $i++) {
-
-    if ($rolling12[$i] !== null) {
-
-        $anomaly[$i] =
-            $rolling12[$i] -
-            $climateNormal;
-    }
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| STEP 5
-|
-| DATES
+| TIME AXIS
 |--------------------------------------------------------------------------
 |
 | IMPORTANT:
-| Change this date if your APDRC time series starts
-| at a different month.
+| Change this if your APDRC dataset starts
+| at another month.
 |--------------------------------------------------------------------------
 */
 
@@ -451,6 +271,9 @@ $startDate =
 
 
 $dates = [];
+
+$years = [];
+$months = [];
 
 
 for ($i = 0; $i < $n; $i++) {
@@ -462,43 +285,502 @@ for ($i = 0; $i < $n; $i++) {
         "+{$i} months"
     );
 
+
     $dates[] =
         $date->format('Y-m-d');
+
+    $years[] =
+        (int)$date->format('Y');
+
+    $months[] =
+        (int)$date->format('n');
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| STEP 6
+| ALL-PERIOD MONTHLY CLIMATOLOGY
+|--------------------------------------------------------------------------
 |
-| JSON FOR JAVASCRIPT
+| January climatology = mean of ALL Januaries
+| February climatology = mean of ALL Februaries
+| ...
 |--------------------------------------------------------------------------
 */
 
-$chartData = [];
+$monthlySums =
+    array_fill(1, 12, 0.0);
+
+$monthlyCounts =
+    array_fill(1, 12, 0);
 
 
 for ($i = 0; $i < $n; $i++) {
 
-    $chartData[] = [
+    $month =
+        $months[$i];
 
-        'date' =>
-            $dates[$i],
+    $value =
+        $monthlyTemperatureC[$i];
 
-        'anomaly' =>
-            $anomaly[$i] === null
-                ? null
-                : round(
-                    $anomaly[$i],
-                    4
-                )
-    ];
+
+    if (is_finite($value)) {
+
+        $monthlySums[$month] +=
+            $value;
+
+        $monthlyCounts[$month]++;
+    }
 }
+
+
+$monthlyClimatology =
+    array_fill(1, 12, null);
+
+
+for ($month = 1; $month <= 12; $month++) {
+
+    if ($monthlyCounts[$month] > 0) {
+
+        $monthlyClimatology[$month] =
+            $monthlySums[$month] /
+            $monthlyCounts[$month];
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| BUILD ANNUAL MONTHLY SERIES
+|--------------------------------------------------------------------------
+|
+| Used for January ... December.
+|--------------------------------------------------------------------------
+*/
+
+$annualMonthSeries = [];
+
+
+for ($month = 1; $month <= 12; $month++) {
+
+    $annualMonthSeries[$month] = [];
+}
+
+
+for ($i = 0; $i < $n; $i++) {
+
+    $month =
+        $months[$i];
+
+    $year =
+        $years[$i];
+
+    $temperature =
+        $monthlyTemperatureC[$i];
+
+
+    if (!isset($annualMonthSeries[$month][$year])) {
+
+        $annualMonthSeries[$month][$year] =
+            [];
+    }
+
+
+    $annualMonthSeries[$month][$year][] =
+        $temperature;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| SEASONS
+|--------------------------------------------------------------------------
+|
+| DJF:
+| December + January + February
+|
+| MAM:
+| March + April + May
+|
+| JJA:
+| June + July + August
+|
+| SON:
+| September + October + November
+|
+|--------------------------------------------------------------------------
+*/
+
+$seasonDefinitions = [
+
+    'DJF' => [
+        12,
+        1,
+        2
+    ],
+
+    'MAM' => [
+        3,
+        4,
+        5
+    ],
+
+    'JJA' => [
+        6,
+        7,
+        8
+    ],
+
+    'SON' => [
+        9,
+        10,
+        11
+    ]
+
+];
+
+
+/*
+|--------------------------------------------------------------------------
+| BUILD SEASONAL MEANS
+|--------------------------------------------------------------------------
+|
+| DJF is assigned to the YEAR of January/February.
+|
+| Example:
+|
+| December 2020
+| January 2021
+| February 2021
+|
+| becomes:
+|
+| DJF 2021
+|--------------------------------------------------------------------------
+*/
+
+$seasonSeries = [];
+
+
+foreach ($seasonDefinitions as $season => $seasonMonths) {
+
+    $seasonSeries[$season] = [];
+
+}
+
+
+/*
+ * We process every year.
+ */
+$uniqueYears =
+    array_values(
+        array_unique($years)
+    );
+
+sort($uniqueYears);
+
+
+foreach ($seasonDefinitions as $season => $seasonMonths) {
+
+    foreach ($uniqueYears as $year) {
+
+        $values = [];
+
+
+        if ($season === 'DJF') {
+
+            /*
+             * December belongs to previous year.
+             */
+            foreach ($seasonMonths as $month) {
+
+                if ($month === 12) {
+
+                    $targetYear =
+                        $year - 1;
+
+                } else {
+
+                    $targetYear =
+                        $year;
+                }
+
+
+                for ($i = 0; $i < $n; $i++) {
+
+                    if (
+                        $years[$i] === $targetYear &&
+                        $months[$i] === $month
+                    ) {
+
+                        $values[] =
+                            $monthlyTemperatureC[$i];
+
+                        break;
+                    }
+                }
+            }
+
+        } else {
+
+            foreach ($seasonMonths as $month) {
+
+                for ($i = 0; $i < $n; $i++) {
+
+                    if (
+                        $years[$i] === $year &&
+                        $months[$i] === $month
+                    ) {
+
+                        $values[] =
+                            $monthlyTemperatureC[$i];
+
+                        break;
+                    }
+                }
+            }
+        }
+
+
+        /*
+         * Require all 3 months.
+         */
+        if (count($values) === 3) {
+
+            $seasonSeries[$season][$year] =
+                array_sum($values) / 3.0;
+        }
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| SEASON CLIMATOLOGY
+|--------------------------------------------------------------------------
+*/
+
+$seasonClimatology = [];
+
+
+foreach ($seasonDefinitions as $season => $unused) {
+
+    $values =
+        array_values(
+            $seasonSeries[$season]
+        );
+
+
+    if (!empty($values)) {
+
+        $seasonClimatology[$season] =
+            array_sum($values) /
+            count($values);
+
+    } else {
+
+        $seasonClimatology[$season] =
+            null;
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| ALLOWED PERIODS
+|--------------------------------------------------------------------------
+*/
+
+$allowedPeriods = [
+
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
+
+    'DJF',
+    'MAM',
+    'JJA',
+    'SON'
+
+];
+
+
+if (!in_array($period, $allowedPeriods, true)) {
+    $period = 'JAN';
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| BUILD CHART SERIES
+|--------------------------------------------------------------------------
+*/
+
+$chartRows = [];
+
+$selectedClimatology = null;
+
+$selectedLabel = 'January';
+
+
+/*
+|--------------------------------------------------------------------------
+| MONTH
+|--------------------------------------------------------------------------
+*/
+
+$monthMap = [
+
+    'JAN' => 1,
+    'FEB' => 2,
+    'MAR' => 3,
+    'APR' => 4,
+    'MAY' => 5,
+    'JUN' => 6,
+    'JUL' => 7,
+    'AUG' => 8,
+    'SEP' => 9,
+    'OCT' => 10,
+    'NOV' => 11,
+    'DEC' => 12
+
+];
+
+
+$monthNames = [
+
+    1 => 'January',
+    2 => 'February',
+    3 => 'March',
+    4 => 'April',
+    5 => 'May',
+    6 => 'June',
+    7 => 'July',
+    8 => 'August',
+    9 => 'September',
+    10 => 'October',
+    11 => 'November',
+    12 => 'December'
+
+];
+
+
+if (isset($monthMap[$period])) {
+
+    $monthNumber =
+        $monthMap[$period];
+
+    $selectedClimatology =
+        $monthlyClimatology[$monthNumber];
+
+    $selectedLabel =
+        $monthNames[$monthNumber];
+
+
+    foreach (
+        $annualMonthSeries[$monthNumber]
+        as $year => $values
+    ) {
+
+        if (empty($values)) {
+            continue;
+        }
+
+
+        $temperature =
+            array_sum($values) /
+            count($values);
+
+
+        $anomaly =
+            $temperature -
+            $selectedClimatology;
+
+
+        $chartRows[] = [
+
+            'x' =>
+                $year . '-01-01',
+
+            'temperature' =>
+                round($temperature, 4),
+
+            'anomaly' =>
+                round($anomaly, 4)
+
+        ];
+    }
+
+
+} else {
+
+    /*
+     * SEASON
+     */
+
+    $selectedClimatology =
+        $seasonClimatology[$period];
+
+    $selectedLabel =
+        $period;
+
+
+    foreach (
+        $seasonSeries[$period]
+        as $year => $temperature
+    ) {
+
+        $anomaly =
+            $temperature -
+            $selectedClimatology;
+
+
+        $chartRows[] = [
+
+            'x' =>
+                $year . '-01-01',
+
+            'temperature' =>
+                round($temperature, 4),
+
+            'anomaly' =>
+                round($anomaly, 4)
+
+        ];
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| SORT CHART DATA
+|--------------------------------------------------------------------------
+*/
+
+usort(
+    $chartRows,
+    function ($a, $b) {
+
+        return strcmp(
+            $a['x'],
+            $b['x']
+        );
+    }
+);
 
 
 $json =
     json_encode(
-        $chartData,
+        $chartRows,
         JSON_UNESCAPED_SLASHES |
         JSON_NUMERIC_CHECK
     );
@@ -518,7 +800,7 @@ $json =
 >
 
 <title>
-    1000–925 hPa Temperature Anomaly
+    ERA5 1000–925 hPa Temperature Anomaly
 </title>
 
 
@@ -545,10 +827,6 @@ $json =
 
 
 <style>
-
-/* =========================================================
-   USER PROVIDED STYLE
-   ========================================================= */
 
 * {
   margin: 0;
@@ -634,29 +912,44 @@ button {
 }
 
 
-/* =========================================================
-   SMALL ADDITIONS
-   ========================================================= */
+/*
+|--------------------------------------------------------------------------
+| ADDITIONAL CONTROLS
+|--------------------------------------------------------------------------
+*/
+
+.period-select {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px;
+}
+
+select {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #111;
+    font-family: inherit;
+    cursor: pointer;
+}
 
 .location-row {
+    margin-top: 10px;
     text-align: center;
+}
+
+.climatology {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.9rem;
     margin-bottom: 1rem;
 }
 
-.location-label {
-    margin-right: 5px;
-}
-
-.chart-container canvas {
-    width: 100% !important;
-    height: 100% !important;
-}
-
-.normal-info {
-    text-align: center;
-    margin-top: 1rem;
-    color: #94a3b8;
-    font-size: 0.9rem;
+.anomaly-value {
+    color: #e2e8f0;
+    font-weight: 600;
 }
 
 </style>
@@ -677,27 +970,165 @@ button {
 
 <div class="date-picker">
 
+
+    <div class="period-select">
+
+        <label for="period">
+            Period:
+        </label>
+
+        <select
+            id="period"
+            onchange="changePeriod()"
+        >
+
+            <optgroup label="Months">
+
+                <option
+                    value="JAN"
+                    <?= $period === 'JAN' ? 'selected' : '' ?>
+                >
+                    January
+                </option>
+
+                <option
+                    value="FEB"
+                    <?= $period === 'FEB' ? 'selected' : '' ?>
+                >
+                    February
+                </option>
+
+                <option
+                    value="MAR"
+                    <?= $period === 'MAR' ? 'selected' : '' ?>
+                >
+                    March
+                </option>
+
+                <option
+                    value="APR"
+                    <?= $period === 'APR' ? 'selected' : '' ?>
+                >
+                    April
+                </option>
+
+                <option
+                    value="MAY"
+                    <?= $period === 'MAY' ? 'selected' : '' ?>
+                >
+                    May
+                </option>
+
+                <option
+                    value="JUN"
+                    <?= $period === 'JUN' ? 'selected' : '' ?>
+                >
+                    June
+                </option>
+
+                <option
+                    value="JUL"
+                    <?= $period === 'JUL' ? 'selected' : '' ?>
+                >
+                    July
+                </option>
+
+                <option
+                    value="AUG"
+                    <?= $period === 'AUG' ? 'selected' : '' ?>
+                >
+                    August
+                </option>
+
+                <option
+                    value="SEP"
+                    <?= $period === 'SEP' ? 'selected' : '' ?>
+                >
+                    September
+                </option>
+
+                <option
+                    value="OCT"
+                    <?= $period === 'OCT' ? 'selected' : '' ?>
+                >
+                    October
+                </option>
+
+                <option
+                    value="NOV"
+                    <?= $period === 'NOV' ? 'selected' : '' ?>
+                >
+                    November
+                </option>
+
+                <option
+                    value="DEC"
+                    <?= $period === 'DEC' ? 'selected' : '' ?>
+                >
+                    December
+                </option>
+
+            </optgroup>
+
+
+            <optgroup label="Seasons">
+
+                <option
+                    value="DJF"
+                    <?= $period === 'DJF' ? 'selected' : '' ?>
+                >
+                    December–February
+                </option>
+
+                <option
+                    value="MAM"
+                    <?= $period === 'MAM' ? 'selected' : '' ?>
+                >
+                    March–May
+                </option>
+
+                <option
+                    value="JJA"
+                    <?= $period === 'JJA' ? 'selected' : '' ?>
+                >
+                    June–August
+                </option>
+
+                <option
+                    value="SON"
+                    <?= $period === 'SON' ? 'selected' : '' ?>
+                >
+                    September–November
+                </option>
+
+            </optgroup>
+
+        </select>
+
+    </div>
+
+
     <div class="location-row">
 
-        <span class="location-label">
+        <label>
             Latitude
-        </span>
+        </label>
 
         <input
             type="number"
             id="latitude"
-            step="0.25"
             min="-90"
             max="90"
+            step="0.25"
             value="<?= htmlspecialchars(
                 (string)$latitude
             ) ?>"
         >
 
 
-        <span class="location-label">
+        <label>
             Longitude
-        </span>
+        </label>
 
         <input
             type="number"
@@ -711,12 +1142,35 @@ button {
 
         <button
             type="button"
-            onclick="loadLocation()"
+            onclick="changeLocation()"
         >
             Load location
         </button>
 
     </div>
+
+</div>
+
+
+<div class="climatology">
+
+    <?= htmlspecialchars($selectedLabel) ?>
+
+    &nbsp;·&nbsp;
+
+    All-period climate normal:
+
+    <span class="anomaly-value">
+        <?= number_format(
+            $selectedClimatology,
+            2
+        ) ?> °C
+    </span>
+
+    &nbsp;·&nbsp;
+
+    <?= $actualLatitude ?>°,
+    <?= $actualLongitude ?>°
 
 </div>
 
@@ -728,89 +1182,6 @@ button {
 </div>
 
 
-<div class="stats-container">
-
-
-    <div class="stat-box">
-
-        Location
-
-        <span>
-
-            <?= $actualLatitude ?>°,
-            <?= $actualLongitude ?>°
-
-        </span>
-
-    </div>
-
-
-    <div class="stat-box">
-
-        12M climate normal
-
-        <span>
-
-            <?= number_format(
-                $climateNormal,
-                2
-            ) ?> °C
-
-        </span>
-
-    </div>
-
-
-    <div class="stat-box">
-
-        Latest anomaly
-
-        <span id="latestAnomaly">
-
-            —
-
-        </span>
-
-    </div>
-
-
-    <div class="stat-box">
-
-        Maximum anomaly
-
-        <span id="maxAnomaly">
-
-            —
-
-        </span>
-
-    </div>
-
-
-    <div class="stat-box">
-
-        Minimum anomaly
-
-        <span id="minAnomaly">
-
-            —
-
-        </span>
-
-    </div>
-
-</div>
-
-
-<div class="normal-info">
-
-    12-month rolling temperature anomaly
-    relative to the mean of ALL available
-    12-month rolling values.
-
-</div>
-
-
 </div>
 
 
@@ -818,25 +1189,12 @@ button {
 
 /*
 |--------------------------------------------------------------------------
-| DATA FROM PHP
+| DATA
 |--------------------------------------------------------------------------
 */
 
 const data =
     <?= $json ?>;
-
-
-/*
-|--------------------------------------------------------------------------
-| VALID VALUES ONLY
-|--------------------------------------------------------------------------
-*/
-
-const validData =
-    data.filter(
-        row =>
-            row.anomaly !== null
-    );
 
 
 /*
@@ -854,8 +1212,10 @@ const ctx =
 
 
 /*
- * Zero line plugin.
- */
+|--------------------------------------------------------------------------
+| ZERO LINE
+|--------------------------------------------------------------------------
+*/
 
 const zeroLinePlugin = {
 
@@ -869,12 +1229,15 @@ const zeroLinePlugin = {
             scales
         } = chart;
 
+
         if (!scales.y) {
             return;
         }
 
+
         const y =
             scales.y.getPixelForValue(0);
+
 
         if (
             y < chartArea.top ||
@@ -883,218 +1246,284 @@ const zeroLinePlugin = {
             return;
         }
 
+
         ctx.save();
 
+
         ctx.beginPath();
+
 
         ctx.moveTo(
             chartArea.left,
             y
         );
 
+
         ctx.lineTo(
             chartArea.right,
             y
         );
 
-        ctx.lineWidth = 1;
 
-        ctx.setLineDash([5, 5]);
+        ctx.lineWidth =
+            1;
+
+
+        ctx.setLineDash([
+            5,
+            5
+        ]);
+
 
         ctx.strokeStyle =
-            'rgba(226,232,240,0.45)';
+            'rgba(255,255,255,0.35)';
+
 
         ctx.stroke();
 
+
         ctx.restore();
     }
+
 };
 
 
-new Chart(ctx, {
+/*
+|--------------------------------------------------------------------------
+| CHART
+|--------------------------------------------------------------------------
+*/
 
-    type: 'line',
+new Chart(
+    ctx,
+    {
 
-    data: {
+        type: 'line',
 
-        datasets: [
+        data: {
 
-            {
+            datasets: [
 
-                label:
-                    '12-month rolling temperature anomaly',
-
-                data:
-                    data.map(
-                        row => ({
-                            x: row.date,
-                            y: row.anomaly
-                        })
-                    ),
-
-                borderWidth: 3,
-
-                pointRadius: 0,
-
-                tension: 0.15,
-
-                fill: false,
-
-                spanGaps: false
-
-            }
-
-        ]
-
-    },
-
-
-    plugins: [
-        zeroLinePlugin
-    ],
-
-
-    options: {
-
-        responsive: true,
-
-        maintainAspectRatio: false,
-
-        interaction: {
-
-            mode: 'index',
-
-            intersect: false
-
-        },
-
-
-        scales: {
-
-            x: {
-
-                type: 'time',
-
-                time: {
-
-                    unit: 'year',
-
-                    tooltipFormat:
-                        'MMM yyyy'
-
-                },
-
-                grid: {
-
-                    display: false
-
-                },
-
-                ticks: {
-
-                    color: '#94a3b8'
-
-                },
-
-                title: {
-
-                    display: true,
-
-                    text: 'Year',
-
-                    color: '#94a3b8'
-
-                }
-
-            },
-
-
-            y: {
-
-                ticks: {
-
-                    color: '#94a3b8',
-
-                    callback:
-                        function(value) {
-
-                            return (
-                                value.toFixed(1) +
-                                ' °C'
-                            );
-
-                        }
-
-                },
-
-                grid: {
-
-                    color:
-                        'rgba(148,163,184,0.12)'
-
-                },
-
-                title: {
-
-                    display: true,
-
-                    text:
-                        'Temperature anomaly (°C)',
-
-                    color: '#94a3b8'
-
-                }
-
-            }
-
-        },
-
-
-        plugins: {
-
-            legend: {
-
-                labels: {
-
-                    color: '#e2e8f0'
-
-                }
-
-            },
-
-
-            tooltip: {
-
-                callbacks: {
+                {
 
                     label:
-                        function(context) {
+                        'Temperature anomaly',
 
-                            const value =
-                                context.parsed.y;
+                    data:
+                        data,
 
-                            if (
-                                value === null ||
-                                value === undefined
-                            ) {
+                    parsing: {
 
-                                return 'No data';
+                        xAxisKey: 'x',
+
+                        yAxisKey: 'anomaly'
+
+                    },
+
+                    borderColor:
+                        '#ffffff',
+
+                    backgroundColor:
+                        'transparent',
+
+                    borderWidth:
+                        2.5,
+
+                    pointRadius:
+                        0,
+
+                    pointHoverRadius:
+                        5,
+
+                    tension:
+                        0.15,
+
+                    fill:
+                        false
+
+                }
+
+            ]
+
+        },
+
+
+        plugins: [
+            zeroLinePlugin
+        ],
+
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+
+            interaction: {
+
+                mode: 'index',
+
+                intersect: false
+
+            },
+
+
+            scales: {
+
+                x: {
+
+                    type: 'time',
+
+                    time: {
+
+                        unit: 'year',
+
+                        tooltipFormat:
+                            'yyyy'
+
+                    },
+
+                    grid: {
+
+                        color:
+                            'rgba(255,255,255,0.06)'
+
+                    },
+
+                    ticks: {
+
+                        color:
+                            '#94a3b8'
+
+                    },
+
+                    title: {
+
+                        display:
+                            true,
+
+                        text:
+                            'Year',
+
+                        color:
+                            '#94a3b8'
+
+                    }
+
+                },
+
+
+                y: {
+
+                    grid: {
+
+                        color:
+                            'rgba(255,255,255,0.08)'
+
+                    },
+
+                    ticks: {
+
+                        color:
+                            '#94a3b8',
+
+                        callback:
+                            function(value) {
+
+                                const sign =
+                                    value > 0
+                                        ? '+'
+                                        : '';
+
+                                return (
+                                    sign +
+                                    value.toFixed(1) +
+                                    ' °C'
+                                );
 
                             }
 
-                            const sign =
-                                value > 0
-                                    ? '+'
-                                    : '';
+                    },
 
-                            return (
-                                'Anomaly: ' +
-                                sign +
-                                value.toFixed(2) +
-                                ' °C'
-                            );
+                    title: {
 
-                        }
+                        display:
+                            true,
+
+                        text:
+                            'Temperature anomaly (°C)',
+
+                        color:
+                            '#94a3b8'
+
+                    }
+
+                }
+
+            },
+
+
+            plugins: {
+
+                legend: {
+
+                    display:
+                        false
+
+                },
+
+
+                tooltip: {
+
+                    callbacks: {
+
+                        title:
+                            function(items) {
+
+                                if (!items.length) {
+                                    return '';
+                                }
+
+                                return items[0]
+                                    .raw
+                                    .x
+                                    .substring(0, 4);
+                            },
+
+
+                        label:
+                            function(context) {
+
+                                const anomaly =
+                                    context.raw.anomaly;
+
+                                const temperature =
+                                    context.raw.temperature;
+
+
+                                const sign =
+                                    anomaly >= 0
+                                        ? '+'
+                                        : '';
+
+
+                                return [
+
+                                    'Anomaly: ' +
+                                    sign +
+                                    anomaly.toFixed(2) +
+                                    ' °C',
+
+                                    'Temperature: ' +
+                                    temperature.toFixed(2) +
+                                    ' °C'
+
+                                ];
+
+                            }
+
+                    }
 
                 }
 
@@ -1103,100 +1532,64 @@ new Chart(ctx, {
         }
 
     }
-
-});
+);
 
 
 /*
 |--------------------------------------------------------------------------
-| STATISTICS
+| CHANGE PERIOD
 |--------------------------------------------------------------------------
 */
 
-if (validData.length > 0) {
+function changePeriod()
+{
+    const period =
+        document
+            .getElementById('period')
+            .value;
 
-    const values =
-        validData.map(
-            row => row.anomaly
+
+    const params =
+        new URLSearchParams(
+            window.location.search
         );
 
 
-    const latest =
-        values[values.length - 1];
+    params.set(
+        'period',
+        period
+    );
 
 
-    const maximum =
-        Math.max(...values);
-
-
-    const minimum =
-        Math.min(...values);
-
-
-    document
-        .getElementById(
-            'latestAnomaly'
-        )
-        .textContent =
-            (
-                latest >= 0
-                    ? '+'
-                    : ''
-            ) +
-            latest.toFixed(2) +
-            ' °C';
-
-
-    document
-        .getElementById(
-            'maxAnomaly'
-        )
-        .textContent =
-            (
-                maximum >= 0
-                    ? '+'
-                    : ''
-            ) +
-            maximum.toFixed(2) +
-            ' °C';
-
-
-    document
-        .getElementById(
-            'minAnomaly'
-        )
-        .textContent =
-            (
-                minimum >= 0
-                    ? '+'
-                    : ''
-            ) +
-            minimum.toFixed(2) +
-            ' °C';
+    window.location.href =
+        '?' +
+        params.toString();
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| LOCATION
+| CHANGE LOCATION
 |--------------------------------------------------------------------------
 */
 
-function loadLocation()
+function changeLocation()
 {
     const lat =
         document
-            .getElementById(
-                'latitude'
-            )
+            .getElementById('latitude')
             .value;
 
 
     const lon =
         document
-            .getElementById(
-                'longitude'
-            )
+            .getElementById('longitude')
+            .value;
+
+
+    const period =
+        document
+            .getElementById('period')
             .value;
 
 
@@ -1213,6 +1606,12 @@ function loadLocation()
     params.set(
         'lon',
         lon
+    );
+
+
+    params.set(
+        'period',
+        period
     );
 
 
