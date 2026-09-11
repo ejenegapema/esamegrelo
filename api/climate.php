@@ -1314,7 +1314,7 @@ select {
                         ? 'selected'
                         : '' ?>
                 >
-                    12-Month Rolling
+                    Rolling 12-Month
                 </option>
 
             </optgroup>
