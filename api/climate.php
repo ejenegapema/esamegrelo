@@ -10,13 +10,14 @@ $url_1000 = 'https://apdrc.soest.hawaii.edu/dods/public_data/'
 
 
 /**
- * Download and extract numeric values from an OPeNDAP ASCII response.
+ * Download ERA5 ASCII data and extract all numeric values.
  */
 function getValues(string $url): array
 {
     $context = stream_context_create([
         'http' => [
             'timeout' => 30,
+            'ignore_errors' => true,
         ],
     ]);
 
@@ -27,32 +28,37 @@ function getValues(string $url): array
     }
 
     /*
-     * Match rows such as:
+     * Extract numbers after the indexed part.
      *
-     * [0][0][0], 7644.9766
-     *
-     * and also rows containing multiple comma-separated values.
+     * Example:
+     * [0][3][530][168], 7625.1234
      */
     preg_match_all(
-        '/^\s*(?:\[\d+\])+\s*,\s*([^\r\n]+)/m',
+        '/^\s*(?:\[\d+\])+\s*,\s*(.*)$/m',
         $text,
-        $matches
+        $rows
     );
 
     $values = [];
 
-    foreach ($matches[1] as $row) {
-        foreach (explode(',', $row) as $item) {
-            $item = trim($item);
+    foreach ($rows[1] as $row) {
 
-            if (is_numeric($item)) {
-                $values[] = (float)$item;
-            }
+        /*
+         * Extract floats/scientific notation safely.
+         */
+        preg_match_all(
+            '/[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?/',
+            $row,
+            $numbers
+        );
+
+        foreach ($numbers[0] as $number) {
+            $values[] = (float)$number;
         }
     }
 
     if (empty($values)) {
-        die("No numeric values found for:\n$url\n");
+        die("No numeric values found.\n");
     }
 
     return $values;
@@ -60,82 +66,84 @@ function getValues(string $url): array
 
 
 /*
- * Constants
+ * ERA5 constants
  */
-$g  = 9.80665;  // m/s²
 $Rd = 287.05;   // J/(kg·K)
 
-$p1000 = 1000.0; // hPa
-$p925  = 925.0;  // hPa
+/*
+ * Pressure values in hPa.
+ * The ratio is dimensionless, so hPa is fine here.
+ */
+$p1000 = 1000.0;
+$p925  = 925.0;
 
 
 /*
- * Download both pressure-level datasets
+ * Download both pressure levels
  */
-$z925  = getValues($url_925);
-$z1000 = getValues($url_1000);
+$phi925  = getValues($url_925);
+$phi1000 = getValues($url_1000);
 
 
 /*
- * Make sure both datasets have the same number of values
+ * Verify that both arrays match.
  */
-if (count($z925) !== count($z1000)) {
+if (count($phi925) !== count($phi1000)) {
     die(
-        "Dataset size mismatch: " .
-        count($z925) .
-        " values at 925 hPa, " .
-        count($z1000) .
-        " values at 1000 hPa.\n"
+        "ERROR: Different number of values.\n" .
+        "925 hPa : " . count($phi925) . "\n" .
+        "1000 hPa: " . count($phi1000) . "\n"
     );
 }
 
 
 /*
- * Hypsometric equation:
+ * Constant part of the hypsometric equation:
  *
- * Tmean = g * (Z925 - Z1000)
- *         -------------------------
- *         Rd * ln(1000 / 925)
+ * T = ΔΦ / (Rd * ln(P1000/P925))
  *
+ * ΔΦ is in m²/s².
  */
-$layerTemperaturesK  = [];
-$layerTemperaturesC  = [];
-$thicknesses         = [];
-$relativeGeopotential = [];
+$denominator = $Rd * log($p1000 / $p925);
 
 
-for ($i = 0; $i < count($z925); $i++) {
+$temperaturesC = [];
+
+
+for ($i = 0; $i < count($phi925); $i++) {
 
     /*
-     * Geopotential difference / thickness
+     * Geopotential difference:
+     *
+     * Φ925 > Φ1000 normally
      */
-    $deltaZ = $z925[$i] - $z1000[$i];
+    $deltaPhi = $phi925[$i] - $phi1000[$i];
+
 
     /*
-     * Mean layer temperature in Kelvin
+     * Mean temperature in Kelvin
      */
-    $temperatureK =
-        ($g * $deltaZ) /
-        ($Rd * log($p1000 / $p925));
+    $temperatureK = $deltaPhi / $denominator;
+
 
     /*
-     * Convert Kelvin -> Celsius
+     * Kelvin -> Celsius
      */
     $temperatureC = $temperatureK - 273.15;
 
+
     /*
-     * Store results
+     * Ignore invalid values
      */
-    $thicknesses[]          = $deltaZ;
-    $relativeGeopotential[] = $deltaZ;
-    $layerTemperaturesK[]   = $temperatureK;
-    $layerTemperaturesC[]   = $temperatureC;
+    if (is_finite($temperatureC)) {
+        $temperaturesC[] = $temperatureC;
+    }
 }
 
 
 /*
- * Print ONLY the mean layer temperatures in °C
+ * Print ONLY Celsius values
  */
-foreach ($layerTemperaturesC as $temperature) {
-    echo $temperature . PHP_EOL;
+foreach ($temperaturesC as $temperatureC) {
+    printf("%.2f\n", $temperatureC);
 }
