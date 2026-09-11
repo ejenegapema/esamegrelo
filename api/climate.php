@@ -1421,7 +1421,7 @@ select {
     <div class="location-row">
 
         <label>
-            Latitude
+            Latitude:
         </label>
 
 
@@ -1438,7 +1438,7 @@ select {
 
 
         <label>
-            Longitude
+            Longitude:
         </label>
 
 
@@ -1740,7 +1740,7 @@ new Chart(
                                 return (
                                     sign +
                                     number.toFixed(1) +
-                                    ' °C'
+                                    ''
                                 );
 
                             }
