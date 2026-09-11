@@ -1,33 +1,13 @@
 <?php
 
-/*
-|--------------------------------------------------------------------------
-| LOCATION
-|--------------------------------------------------------------------------
-*/
-
 $latitude  = isset($_GET['lat']) ? (float)$_GET['lat'] : 42.5;
 $longitude = isset($_GET['lon']) ? (float)$_GET['lon'] : 42.0;
 
 $period = isset($_GET['period']) ? strtoupper($_GET['period']) : 'ALL';
 
-
-/*
-|--------------------------------------------------------------------------
-| VALIDATE LATITUDE
-|--------------------------------------------------------------------------
-*/
-
 if ($latitude < -90 || $latitude > 90) {
     die("Latitude must be between -90 and 90.");
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| NORMALIZE LONGITUDE
-|--------------------------------------------------------------------------
-*/
 
 $longitude = fmod($longitude, 360.0);
 
@@ -85,7 +65,7 @@ $actualLongitude =
 $url_925 =
     'https://apdrc.soest.hawaii.edu/dods/public_data/' .
     'Reanalysis_Data/ERA5/monthly_3d/' .
-    'Geopotential.ascii?zg[0:][3][' .
+    'Geopotential.ascii?zg[0:1039][3][' .
     $latitudeIndex . '][' .
     $longitudeIndex . ']';
 
@@ -93,7 +73,7 @@ $url_925 =
 $url_1000 =
     'https://apdrc.soest.hawaii.edu/dods/public_data/' .
     'Reanalysis_Data/ERA5/monthly_3d/' .
-    'Geopotential.ascii?zg[0:][0][' .
+    'Geopotential.ascii?zg[0:1039][0][' .
     $latitudeIndex . '][' .
     $longitudeIndex . ']';
 
