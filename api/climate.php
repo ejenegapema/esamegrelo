@@ -1619,7 +1619,7 @@ new Chart(
                         2.5,
 
                     pointRadius:
-                        0,
+                        2,
 
                     pointHoverRadius:
                         5,
