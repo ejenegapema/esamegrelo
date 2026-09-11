@@ -102,14 +102,14 @@ $actualLongitude =
 $url_925 =
     'https://apdrc.soest.hawaii.edu/dods/public_data/' .
     'Reanalysis_Data/ERA5/monthly_3d/' .
-    'Geopotential.ascii?zg[0:][3][' .
+    'Geopotential.ascii?zg[0:1039][3][' .
     $latitudeIndex . '][' .
     $longitudeIndex . ']';
 
 $url_1000 =
     'https://apdrc.soest.hawaii.edu/dods/public_data/' .
     'Reanalysis_Data/ERA5/monthly_3d/' .
-    'Geopotential.ascii?zg[0:][0][' .
+    'Geopotential.ascii?zg[0:1039][0][' .
     $latitudeIndex . '][' .
     $longitudeIndex . ']';
 
