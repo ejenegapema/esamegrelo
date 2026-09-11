@@ -1277,14 +1277,11 @@ select {
 
 
 <h1>
-    1000–925 hPa Temperature Anomaly
+    ERA5 1000–925 hPa Temperature Anomaly
 </h1>
 
 
 <div class="date-picker">
-
-
-    <!-- PERIOD SELECTOR -->
 
     <div class="period-row">
 
