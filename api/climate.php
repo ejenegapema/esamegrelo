@@ -2,16 +2,73 @@
 
 $url_925 = 'https://apdrc.soest.hawaii.edu/dods/public_data/'
          . 'Reanalysis_Data/ERA5/monthly_3d/'
-         . 'Geopotential.ascii?zg[0:1039][3][530][168]';
+         . 'Geopotential.ascii?zg[0:5][3][530][168]';
 
 $url_1000 = 'https://apdrc.soest.hawaii.edu/dods/public_data/'
           . 'Reanalysis_Data/ERA5/monthly_3d/'
-          . 'Geopotential.ascii?zg[0:1039][0][530][168]';
+          . 'Geopotential.ascii?zg[0:5][0][530][168]';
 
 
-/**
- * Download ERA5 ASCII data and extract numeric values.
+/*
+|--------------------------------------------------------------------------
+| SETTINGS
+|--------------------------------------------------------------------------
+*/
+
+/*
+ * IMPORTANT:
+ * Set this to the actual first month represented by index [0]
+ * in the APDRC dataset.
  */
+$startDate = new DateTime('1940-01-01');
+
+/*
+ * Previous 30 years = 360 months.
+ */
+$climateNormalMonths = 360;
+
+/*
+ * Rolling periods to calculate.
+ */
+$rollingPeriods = [
+    12,
+    24,
+    36,
+    48,
+    60,
+    120,
+    240,
+    360
+];
+
+
+/*
+|--------------------------------------------------------------------------
+| ERA5 constants
+|--------------------------------------------------------------------------
+*/
+
+$Rd = 287.05;       // J/(kg K)
+$p1000 = 1000.0;    // hPa
+$p925  = 925.0;     // hPa
+
+/*
+ * Hypsometric denominator.
+ *
+ * Since ERA5 zg is geopotential (m²/s²):
+ *
+ * T = ΔPhi / [Rd * ln(P1000/P925)]
+ */
+$hypsometricDenominator =
+    $Rd * log($p1000 / $p925);
+
+
+/*
+|--------------------------------------------------------------------------
+| DOWNLOAD + PARSE OPeNDAP ASCII
+|--------------------------------------------------------------------------
+*/
+
 function getValues(string $url): array
 {
     $context = stream_context_create([
@@ -24,9 +81,18 @@ function getValues(string $url): array
     $text = file_get_contents($url, false, $context);
 
     if ($text === false) {
-        die("Download failed:\n$url\n");
+        die(
+            "Download failed:\n" .
+            $url .
+            "\n"
+        );
     }
 
+    /*
+     * Example APDRC rows:
+     *
+     * [0][3][530][168], 12345.67
+     */
     preg_match_all(
         '/^\s*(?:\[\d+\])+\s*,\s*(.*)$/m',
         $text,
@@ -37,6 +103,13 @@ function getValues(string $url): array
 
     foreach ($rows[1] as $row) {
 
+        /*
+         * Support:
+         * 123.45
+         * -123.45
+         * 1.234e+05
+         * etc.
+         */
         preg_match_all(
             '/[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?/',
             $row,
@@ -49,7 +122,11 @@ function getValues(string $url): array
     }
 
     if (empty($values)) {
-        die("No numeric values found.\n");
+        die(
+            "No numeric values found for:\n" .
+            $url .
+            "\n"
+        );
     }
 
     return $values;
@@ -58,20 +135,7 @@ function getValues(string $url): array
 
 /*
 |--------------------------------------------------------------------------
-| Constants
-|--------------------------------------------------------------------------
-*/
-
-$Rd = 287.05;            // J/(kg·K)
-$p1000 = 1000.0;         // hPa
-$p925  = 925.0;          // hPa
-
-$denominator = $Rd * log($p1000 / $p925);
-
-
-/*
-|--------------------------------------------------------------------------
-| Download geopotential
+| GET BOTH PRESSURE LEVELS
 |--------------------------------------------------------------------------
 */
 
@@ -81,98 +145,79 @@ $phi1000 = getValues($url_1000);
 
 /*
 |--------------------------------------------------------------------------
-| Validate
+| VALIDATE DATA
 |--------------------------------------------------------------------------
 */
 
 if (count($phi925) !== count($phi1000)) {
+
     die(
-        "ERROR: Different number of values.\n" .
+        "ERROR: Dataset size mismatch.\n" .
         "925 hPa : " . count($phi925) . "\n" .
         "1000 hPa: " . count($phi1000) . "\n"
+    );
+}
+
+$n = count($phi925);
+
+if ($n < $climateNormalMonths + 1) {
+
+    die(
+        "ERROR: Not enough data for a 30-year climate normal.\n" .
+        "Need at least " .
+        ($climateNormalMonths + 1) .
+        " months.\n" .
+        "Available: " .
+        $n .
+        " months.\n"
     );
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| Calculate monthly layer temperature
+| STEP 1
+| Calculate monthly 1000–925 hPa layer temperature
 |--------------------------------------------------------------------------
 */
 
-$temperaturesC = [];
-
-for ($i = 0; $i < count($phi925); $i++) {
-
-    // Geopotential difference, m²/s²
-    $deltaPhi = $phi925[$i] - $phi1000[$i];
-
-    // Layer mean temperature, Kelvin
-    $temperatureK = $deltaPhi / $denominator;
-
-    // Kelvin -> Celsius
-    $temperatureC = $temperatureK - 273.15;
-
-    if (is_finite($temperatureC)) {
-        $temperaturesC[] = $temperatureC;
-    }
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| 12-month rolling mean
-|--------------------------------------------------------------------------
-|
-| For month i:
-|
-| rolling12[i] =
-|     mean(temperature[i-11 ... i])
-|
-| The first 11 months are NULL because a complete
-| 12-month window does not yet exist.
-|
-*/
-
-$rolling12 = [];
-$n = count($temperaturesC);
+$temperatureC = [];
 
 for ($i = 0; $i < $n; $i++) {
 
-    if ($i < 11) {
-        $rolling12[] = null;
-        continue;
-    }
+    /*
+     * ERA5 zg = geopotential (m²/s²)
+     */
+    $deltaPhi = $phi925[$i] - $phi1000[$i];
 
-    $sum = 0.0;
+    /*
+     * Layer mean temperature in Kelvin
+     */
+    $temperatureK =
+        $deltaPhi /
+        $hypsometricDenominator;
 
-    for ($j = $i - 11; $j <= $i; $j++) {
-        $sum += $temperaturesC[$j];
-    }
-
-    $rolling12[] = $sum / 12.0;
+    /*
+     * Kelvin -> Celsius
+     */
+    $temperatureC[$i] =
+        $temperatureK - 273.15;
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| Create dates
+| STEP 2
+| Build dates
 |--------------------------------------------------------------------------
-|
-| IMPORTANT:
-| Replace this with the actual start month of your dataset.
-|
-| Example below assumes January 1940.
-|
 */
-
-$startDate = new DateTime('1940-01-01');
 
 $dates = [];
 
 for ($i = 0; $i < $n; $i++) {
 
     $date = clone $startDate;
+
     $date->modify("+{$i} months");
 
     $dates[] = $date->format('Y-m-d');
@@ -181,223 +226,585 @@ for ($i = 0; $i < $n; $i++) {
 
 /*
 |--------------------------------------------------------------------------
-| Prepare JSON for JavaScript
+| STEP 3
+| 30-YEAR TRAILING CLIMATE NORMAL
+|--------------------------------------------------------------------------
+|
+| For month i:
+|
+| climatology(i) =
+|
+| mean of:
+|
+|   same calendar month
+|   from i-360 through i-12
+|
+| Example:
+|
+| January 2020
+|
+| is compared with:
+|
+| January 1990 ... January 2019
+|
+| Current January 2020 is NOT included.
 |--------------------------------------------------------------------------
 */
 
-$chartData = [];
+$monthlyAnomalyC = array_fill(0, $n, null);
+
+
+/*
+ * For efficiency, calculate climatology using direct
+ * 30-year lookup. Since there are only 360 points,
+ * this is still very manageable.
+ */
+
+for ($i = $climateNormalMonths; $i < $n; $i++) {
+
+    $sum = 0.0;
+    $count = 0;
+
+    /*
+     * We need previous 30 years, but only the same
+     * calendar month.
+     *
+     * 360 months backward.
+     */
+    for (
+        $j = $i - $climateNormalMonths;
+        $j <= $i - 12;
+        $j += 12
+    ) {
+
+        $value = $temperatureC[$j];
+
+        if (is_finite($value)) {
+            $sum += $value;
+            $count++;
+        }
+    }
+
+    /*
+     * 30 observations expected:
+     * j = i-360, i-348, ... i-12
+     */
+    if ($count === 30) {
+
+        $climatology = $sum / 30.0;
+
+        /*
+         * Current temperature anomaly relative
+         * to previous 30-year same-month normal.
+         */
+        $monthlyAnomalyC[$i] =
+            $temperatureC[$i] - $climatology;
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| STEP 4
+| Calculate rolling means of ANOMALIES
+|--------------------------------------------------------------------------
+|
+| This is important:
+|
+| We roll the anomaly series,
+| NOT the original temperatures.
+|
+|--------------------------------------------------------------------------
+*/
+
+$rollingData = [];
+
+
+/*
+ * Prefix sum allows fast rolling averages:
+ *
+ * O(N) instead of O(N × window)
+ */
+$prefixSum = array_fill(0, $n + 1, 0.0);
+$prefixCount = array_fill(0, $n + 1, 0);
 
 for ($i = 0; $i < $n; $i++) {
 
-    $chartData[] = [
-        'date'       => $dates[$i],
-        'monthly'    => round($temperaturesC[$i], 3),
-        'rolling12'  => $rolling12[$i] !== null
-            ? round($rolling12[$i], 3)
-            : null
+    $prefixSum[$i + 1] =
+        $prefixSum[$i];
+
+    $prefixCount[$i + 1] =
+        $prefixCount[$i];
+
+    if ($monthlyAnomalyC[$i] !== null &&
+        is_finite($monthlyAnomalyC[$i])) {
+
+        $prefixSum[$i + 1] +=
+            $monthlyAnomalyC[$i];
+
+        $prefixCount[$i + 1]++;
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Calculate every requested rolling period
+|--------------------------------------------------------------------------
+*/
+
+foreach ($rollingPeriods as $months) {
+
+    $rollingData[$months] =
+        array_fill(0, $n, null);
+
+    for ($i = 0; $i < $n; $i++) {
+
+        /*
+         * Need a complete rolling window.
+         */
+        if ($i < $months - 1) {
+            continue;
+        }
+
+        $start = $i - $months + 1;
+        $end   = $i + 1;
+
+        $sum =
+            $prefixSum[$end] -
+            $prefixSum[$start];
+
+        $count =
+            $prefixCount[$end] -
+            $prefixCount[$start];
+
+        /*
+         * Require every month in the window
+         * to have a valid anomaly.
+         */
+        if ($count === $months) {
+
+            $rollingData[$months][$i] =
+                $sum / $months;
+        }
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| STEP 5
+| Prepare chart JSON
+|--------------------------------------------------------------------------
+*/
+
+$chartRows = [];
+
+for ($i = 0; $i < $n; $i++) {
+
+    $row = [
+        'date' => $dates[$i],
     ];
+
+    foreach ($rollingPeriods as $months) {
+
+        $value = $rollingData[$months][$i];
+
+        $row[(string)$months] =
+            $value !== null
+                ? round($value, 4)
+                : null;
+    }
+
+    $chartRows[] = $row;
 }
 
 $jsonData = json_encode(
-    $chartData,
+    $chartRows,
     JSON_UNESCAPED_SLASHES |
     JSON_NUMERIC_CHECK
 );
 
 ?>
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>ERA5 1000–925 hPa Layer Temperature</title>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>
+    1000–925 hPa Temperature Anomaly
+</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
 <style>
 
+html,
 body {
     margin: 0;
-    padding: 30px;
+    padding: 0;
     background: #f5f7fa;
-    font-family: Arial, sans-serif;
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 }
 
-.chart-container {
-    max-width: 1400px;
-    height: 700px;
-    margin: auto;
-    background: white;
+body {
     padding: 25px;
-    border-radius: 16px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+}
+
+.container {
+    max-width: 1500px;
+    margin: auto;
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 25px;
+    box-shadow:
+        0 8px 35px rgba(0, 0, 0, 0.08);
 }
 
 h1 {
-    margin-top: 0;
-    font-size: 24px;
+    margin: 0 0 8px 0;
+    font-size: 25px;
 }
 
-.subtitle {
+.description {
+    margin-bottom: 20px;
     color: #666;
+    font-size: 14px;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-bottom: 20px;
 }
 
+.controls label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 11px;
+    border-radius: 8px;
+    background: #f0f2f5;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.controls input {
+    cursor: pointer;
+}
+
+.chart-wrapper {
+    position: relative;
+    width: 100%;
+    height: 700px;
+}
+
+.info {
+    margin-top: 15px;
+    font-size: 13px;
+    color: #777;
+}
+
 </style>
+
 </head>
 
 <body>
 
-<div class="chart-container">
+<div class="container">
 
     <h1>
-        Mean Temperature of 1000–925 hPa Layer
+        1000–925 hPa Temperature Anomaly
     </h1>
 
-    <div class="subtitle">
-        Monthly temperature with emphasized 12-month rolling mean
+    <div class="description">
+        Anomaly relative to the preceding
+        30-year same-calendar-month climate normal.
+        Curves show rolling anomaly periods.
     </div>
 
-    <canvas id="temperatureChart"></canvas>
+
+    <div class="controls">
+
+        <?php foreach ($rollingPeriods as $months): ?>
+
+            <label>
+
+                <input
+                    type="checkbox"
+                    class="rolling-toggle"
+                    value="<?= $months ?>"
+                    <?= $months === 12 ? 'checked' : '' ?>
+                >
+
+                <?= $months ?> month
+                <?= $months === 1 ? '' : 's' ?>
+
+            </label>
+
+        <?php endforeach; ?>
+
+    </div>
+
+
+    <div class="chart-wrapper">
+
+        <canvas id="temperatureChart"></canvas>
+
+    </div>
+
+
+    <div class="info">
+
+        Monthly anomaly =
+        current layer temperature minus the mean
+        temperature for the same calendar month
+        during the previous 30 years.
+
+    </div>
 
 </div>
 
 
 <script>
 
+/*
+|--------------------------------------------------------------------------
+| DATA FROM PHP
+|--------------------------------------------------------------------------
+*/
+
 const data = <?= $jsonData ?>;
 
-const labels = data.map(row => row.date);
 
-const monthly = data.map(row => row.monthly);
+/*
+|--------------------------------------------------------------------------
+| Rolling periods
+|--------------------------------------------------------------------------
+*/
 
-const rolling12 = data.map(row => row.rolling12);
-
-
-const ctx = document
-    .getElementById('temperatureChart')
-    .getContext('2d');
-
-
-new Chart(ctx, {
-
-    type: 'line',
-
-    data: {
-
-        labels: labels,
-
-        datasets: [
-
-            {
-                label: 'Monthly temperature',
-
-                data: monthly,
-
-                borderWidth: 1,
-
-                pointRadius: 0,
-
-                tension: 0.15,
-
-                fill: false,
-
-                opacity: 0.25
-            },
-
-            {
-                label: '12-month rolling mean',
-
-                data: rolling12,
-
-                borderWidth: 4,
-
-                pointRadius: 0,
-
-                tension: 0.15,
-
-                fill: false
-            }
-
-        ]
-    },
+const periods = [
+    12,
+    24,
+    36,
+    48,
+    60,
+    120,
+    240,
+    360
+];
 
 
-    options: {
+/*
+|--------------------------------------------------------------------------
+| Dataset definitions
+|--------------------------------------------------------------------------
+*/
 
-        responsive: true,
+const datasets = periods.map((months) => {
 
-        maintainAspectRatio: false,
+    return {
 
-        interaction: {
-            mode: 'index',
-            intersect: false
+        label: `${months}-month rolling anomaly`,
+
+        data: data.map(row => {
+
+            return row[String(months)];
+
+        }),
+
+        hidden: months !== 12,
+
+        borderWidth:
+            months >= 120 ? 4 : 2,
+
+        pointRadius: 0,
+
+        tension: 0.15,
+
+        fill: false,
+
+        spanGaps: false
+    };
+
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Chart
+|--------------------------------------------------------------------------
+*/
+
+const ctx =
+    document
+        .getElementById('temperatureChart')
+        .getContext('2d');
+
+
+const chart =
+    new Chart(ctx, {
+
+        type: 'line',
+
+        data: {
+
+            datasets: datasets
         },
 
-        scales: {
+        options: {
 
-            x: {
+            responsive: true,
 
-                type: 'time',
+            maintainAspectRatio: false,
 
-                time: {
-                    unit: 'year',
-                    tooltipFormat: 'MMM yyyy'
-                },
+            interaction: {
 
-                title: {
-                    display: true,
-                    text: 'Year'
-                }
+                mode: 'index',
+
+                intersect: false
             },
 
-            y: {
+            scales: {
 
-                title: {
-                    display: true,
-                    text: 'Temperature (°C)'
+                x: {
+
+                    type: 'time',
+
+                    time: {
+
+                        unit: 'year',
+
+                        tooltipFormat:
+                            'MMM yyyy'
+                    },
+
+                    title: {
+
+                        display: true,
+
+                        text: 'Year'
+                    }
                 },
 
-                ticks: {
-                    callback: function(value) {
-                        return value + ' °C';
+                y: {
+
+                    title: {
+
+                        display: true,
+
+                        text: 'Temperature anomaly (°C)'
+                    },
+
+                    ticks: {
+
+                        callback: function(value) {
+
+                            return value + ' °C';
+
+                        }
+                    },
+
+                    /*
+                     * Very useful for anomalies:
+                     * put zero exactly in the middle
+                     * when possible.
+                     */
+                    grid: {
+
+                        drawOnChartArea: true
                     }
                 }
-            }
-        },
-
-        plugins: {
-
-            legend: {
-                display: true,
-                position: 'top'
             },
 
-            tooltip: {
+            plugins: {
 
-                callbacks: {
+                legend: {
 
-                    label: function(context) {
+                    display: true,
 
-                        const value = context.parsed.y;
+                    position: 'top'
+                },
 
-                        if (value === null) {
-                            return context.dataset.label + ': —';
-                        }
+                tooltip: {
 
-                        return context.dataset.label +
-                               ': ' +
-                               value.toFixed(2) +
-                               ' °C';
+                    callbacks: {
+
+                        label:
+                            function(context) {
+
+                                const value =
+                                    context.parsed.y;
+
+                                if (value === null) {
+
+                                    return (
+                                        context.dataset.label +
+                                        ': —'
+                                    );
+                                }
+
+                                return (
+                                    context.dataset.label +
+                                    ': ' +
+                                    value.toFixed(2) +
+                                    ' °C'
+                                );
+                            }
                     }
                 }
             }
         }
-    }
+    });
 
-});
+
+/*
+|--------------------------------------------------------------------------
+| Checkbox controls
+|--------------------------------------------------------------------------
+*/
+
+document
+    .querySelectorAll('.rolling-toggle')
+    .forEach((checkbox) => {
+
+        checkbox.addEventListener(
+            'change',
+            function() {
+
+                const months =
+                    Number(this.value);
+
+                const dataset =
+                    chart.data.datasets.find(
+                        ds =>
+                            ds.label ===
+                            `${months}-month rolling anomaly`
+                    );
+
+                if (dataset) {
+
+                    dataset.hidden =
+                        !this.checked;
+
+                    chart.update();
+                }
+            }
+        );
+
+    });
 
 </script>
 
