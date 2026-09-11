@@ -25,7 +25,7 @@ $startDate = new DateTime('1940-01-01');
 /*
  * Previous 30 years = 360 months.
  */
-$climateNormalMonths = 360;
+$climateNormalMonths = 30;
 
 /*
  * Rolling periods to calculate.
