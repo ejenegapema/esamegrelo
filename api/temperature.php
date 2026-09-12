@@ -108,7 +108,6 @@ $actualLongitude =
 | 925 hPa:
 |
 | Temperature.ascii?temp[time][3][lat][lon]
-|
 |--------------------------------------------------------------------------
 */
 
@@ -165,16 +164,6 @@ function getValues(string $url): array
         );
     }
 
-
-    /*
-     * Typical APDRC response:
-     *
-     * [0][530][168], 288.123
-     *
-     * or
-     *
-     * [0][3][530][168], 270.123
-     */
 
     preg_match_all(
         '/^\s*(?:\[\d+\])+\s*,\s*(.*?)\s*$/m',
@@ -714,11 +703,6 @@ function buildSeasonSeries(
                 as $month
             ) {
 
-                /*
-                 * DJF December belongs to
-                 * previous calendar year.
-                 */
-
                 if (
                     $season === 'DJF' &&
                     $month === 12
@@ -912,11 +896,9 @@ $chart925 = [];
 | DIFFERENCE DATA
 |--------------------------------------------------------------------------
 |
-| IMPORTANT:
-|
 | difference =
 |
-|     T2m anomaly - 925 hPa anomaly
+|   T2m anomaly - 925 hPa anomaly
 |
 |--------------------------------------------------------------------------
 */
@@ -944,7 +926,7 @@ function addChartPoint(
         'anomaly' =>
             round(
                 $value,
-                2
+                1
             )
 
     ];
@@ -976,27 +958,15 @@ if ($period === 'YEAR') {
             as $year => $unused
         ) {
 
-            /*
-             * T2m anomaly.
-             */
-
             $anomalyT2m =
                 $yearT2m[$year] -
                 $yearClimateT2m;
 
 
-            /*
-             * 925 hPa anomaly.
-             */
-
             $anomaly925 =
                 $year925[$year] -
                 $yearClimate925;
 
-
-            /*
-             * First chart.
-             */
 
             addChartPoint(
                 $chartT2m,
@@ -1013,9 +983,7 @@ if ($period === 'YEAR') {
 
 
             /*
-             * Second chart:
-             *
-             * T2m anomaly - 925 hPa anomaly
+             * Exact same-period difference.
              */
 
             $difference =
@@ -1031,7 +999,7 @@ if ($period === 'YEAR') {
                 'difference' =>
                     round(
                         $difference,
-                        2
+                        1
                     )
 
             ];
@@ -1099,7 +1067,7 @@ if ($period === 'YEAR') {
                 'difference' =>
                     round(
                         $difference,
-                        2
+                        1
                     )
 
             ];
@@ -1188,7 +1156,7 @@ if ($period === 'YEAR') {
                 'difference' =>
                     round(
                         $difference,
-                        2
+                        1
                     )
 
             ];
@@ -1276,7 +1244,7 @@ if ($period === 'YEAR') {
                 'difference' =>
                     round(
                         $difference,
-                        2
+                        1
                     )
 
             ];
@@ -1740,7 +1708,7 @@ const differenceData =
 
 /*
 |--------------------------------------------------------------------------
-| ZERO LINE PLUGIN
+| ZERO LINE
 |--------------------------------------------------------------------------
 */
 
@@ -1820,12 +1788,6 @@ const zeroLinePlugin = {
 |--------------------------------------------------------------------------
 | FIRST CHART
 |--------------------------------------------------------------------------
-|
-| ONLY:
-|
-|   T2m
-|   925 hPa
-|--------------------------------------------------------------------------
 */
 
 const temperatureCtx =
@@ -1848,6 +1810,9 @@ new Chart(
             datasets: [
 
                 {
+                    /*
+                     * T2m = WHITE
+                     */
 
                     label:
                         'T2m',
@@ -1885,11 +1850,13 @@ new Chart(
 
                     fill:
                         false
-
                 },
 
 
                 {
+                    /*
+                     * 925 hPa = BLUE
+                     */
 
                     label:
                         '925 hPa',
@@ -1908,7 +1875,7 @@ new Chart(
                     },
 
                     borderColor:
-                        '#38bdf8',
+                        '#3b82f6',
 
                     backgroundColor:
                         'transparent',
@@ -1927,7 +1894,6 @@ new Chart(
 
                     fill:
                         false
-
                 }
 
             ]
@@ -2089,6 +2055,11 @@ new Chart(
 
                     callbacks: {
 
+                        /*
+                         * IMPORTANT:
+                         * Only YEAR is displayed.
+                         */
+
                         title:
                             function(items) {
 
@@ -2097,13 +2068,15 @@ new Chart(
                                 }
 
 
+                                const rawX =
+                                    items[0].raw.x;
+
+
                                 return String(
-                                    items[0]
-                                        .raw
-                                        .x
+                                    rawX
                                 ).substring(
                                     0,
-                                    7
+                                    4
                                 );
 
                             },
@@ -2128,7 +2101,7 @@ new Chart(
                                     context.dataset.label +
                                     ': ' +
                                     sign +
-                                    value.toFixed(2) +
+                                    value.toFixed(1) +
                                     ' °C'
                                 );
 
@@ -2151,21 +2124,11 @@ new Chart(
 | SECOND CHART
 |--------------------------------------------------------------------------
 |
-| Each value is calculated separately:
+| Each bar is:
 |
 |   T2m anomaly at date
 |       -
-|   925 hPa anomaly at same date
-|
-| Example:
-|
-|   1940-01:
-|       T2m anomaly - 925 anomaly
-|
-|   1940-02:
-|       T2m anomaly - 925 anomaly
-|
-|   etc.
+|   925 hPa anomaly at SAME date
 |
 |--------------------------------------------------------------------------
 */
@@ -2208,12 +2171,19 @@ new Chart(
 
                     },
 
-                    borderWidth:
-                        0,
 
+                    /*
+                     * WHITE HISTOGRAM
+                     */
 
                     backgroundColor:
-                        'rgba(56,189,248,0.55)',
+                        '#ffffff',
+
+                    borderColor:
+                        '#ffffff',
+
+                    borderWidth:
+                        1
 
                 }
 
@@ -2259,8 +2229,13 @@ new Chart(
                         unit:
                             'year',
 
+                        /*
+                         * Tooltip date format is
+                         * year only.
+                         */
+
                         tooltipFormat:
-                            'yyyy-MM'
+                            'yyyy'
 
                     },
 
@@ -2290,7 +2265,7 @@ new Chart(
                             true,
 
                         text:
-                            'Date',
+                            'Year',
 
                         color:
                             '#94a3b8'
@@ -2314,6 +2289,10 @@ new Chart(
                         color:
                             '#94a3b8',
 
+                        /*
+                         * No °C here.
+                         */
+
                         callback:
                             function(value) {
 
@@ -2327,8 +2306,7 @@ new Chart(
 
                                 return (
                                     sign +
-                                    number.toFixed(1) +
-                                    ' °C'
+                                    number.toFixed(1)
                                 );
 
                             }
@@ -2341,7 +2319,7 @@ new Chart(
                             true,
 
                         text:
-                            'T2m anomaly − 925 hPa anomaly (°C)',
+                            'T2m anomaly − 925 hPa anomaly',
 
                         color:
                             '#94a3b8'
@@ -2371,6 +2349,10 @@ new Chart(
 
                     callbacks: {
 
+                        /*
+                         * Year only.
+                         */
+
                         title:
                             function(items) {
 
@@ -2379,18 +2361,14 @@ new Chart(
                                 }
 
 
-                                const date =
-                                    new Date(
-                                        items[0].raw.x
-                                    );
-
-
-                                return date
-                                    .toISOString()
-                                    .substring(
-                                        0,
-                                        7
-                                    );
+                                return String(
+                                    items[0]
+                                        .raw
+                                        .x
+                                ).substring(
+                                    0,
+                                    4
+                                );
 
                             },
 
@@ -2412,8 +2390,7 @@ new Chart(
 
                                 return (
                                     sign +
-                                    value.toFixed(2) +
-                                    ' °C'
+                                    value.toFixed(1)
                                 );
 
                             }
