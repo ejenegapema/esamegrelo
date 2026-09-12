@@ -31,10 +31,6 @@ if ($latitude < -90 || $latitude > 90) {
 |--------------------------------------------------------------------------
 | NORMALIZE LONGITUDE
 |--------------------------------------------------------------------------
-|
-| Internally:
-|   0 ... <360
-|--------------------------------------------------------------------------
 */
 
 $longitude =
@@ -105,14 +101,13 @@ $actualLongitude =
 | DATASET URLS
 |--------------------------------------------------------------------------
 |
-| T2M:
-|   Surface.ascii?t2m[time][lat][lon]
+| T2m:
 |
-| 975 hPa:
-|   Temperature.ascii?temp[time][1][lat][lon]
+| Surface.ascii?t2m[time][lat][lon]
 |
 | 925 hPa:
-|   Temperature.ascii?temp[time][3][lat][lon]
+|
+| Temperature.ascii?temp[time][3][lat][lon]
 |
 |--------------------------------------------------------------------------
 */
@@ -121,16 +116,6 @@ $url_t2m =
     'https://apdrc.soest.hawaii.edu/dods/public_data/' .
     'Reanalysis_Data/ERA5/monthly_2d/' .
     'Surface.ascii?t2m[0:1039][' .
-    $latitudeIndex .
-    '][' .
-    $longitudeIndex .
-    ']';
-
-
-$url_975 =
-    'https://apdrc.soest.hawaii.edu/dods/public_data/' .
-    'Reanalysis_Data/ERA5/monthly_3d/' .
-    'Temperature.ascii?temp[0:1039][1][' .
     $latitudeIndex .
     '][' .
     $longitudeIndex .
@@ -185,7 +170,10 @@ function getValues(string $url): array
      * Typical APDRC response:
      *
      * [0][530][168], 288.123
-     * [0][1][530][168], 272.123
+     *
+     * or
+     *
+     * [0][3][530][168], 270.123
      */
 
     preg_match_all(
@@ -244,9 +232,6 @@ function getValues(string $url): array
 $t2mK =
     getValues($url_t2m);
 
-$temp975K =
-    getValues($url_975);
-
 $temp925K =
     getValues($url_925);
 
@@ -255,15 +240,11 @@ $temp925K =
 |--------------------------------------------------------------------------
 | ALIGN DATA LENGTHS
 |--------------------------------------------------------------------------
-|
-| Use only months available in ALL THREE datasets.
-|--------------------------------------------------------------------------
 */
 
 $n =
     min(
         count($t2mK),
-        count($temp975K),
         count($temp925K)
     );
 
@@ -273,7 +254,6 @@ if ($n < 12) {
     die(
         "At least 12 common months of data are required.<br>" .
         "T2m: " . count($t2mK) . "<br>" .
-        "975 hPa: " . count($temp975K) . "<br>" .
         "925 hPa: " . count($temp925K)
     );
 }
@@ -286,7 +266,6 @@ if ($n < 12) {
 */
 
 $t2mC = [];
-$temp975C = [];
 $temp925C = [];
 
 
@@ -294,10 +273,6 @@ for ($i = 0; $i < $n; $i++) {
 
     $t2mC[$i] =
         $t2mK[$i] - 273.15;
-
-
-    $temp975C[$i] =
-        $temp975K[$i] - 273.15;
 
 
     $temp925C[$i] =
@@ -377,9 +352,6 @@ for ($i = 0; $i < $n; $i++) {
             'months_t2m' =>
                 [],
 
-            'months_975' =>
-                [],
-
             'months_925' =>
                 []
 
@@ -391,10 +363,6 @@ for ($i = 0; $i < $n; $i++) {
         $t2mC[$i];
 
 
-    $yearlyData[$year]['months_975'][$month] =
-        $temp975C[$i];
-
-
     $yearlyData[$year]['months_925'][$month] =
         $temp925C[$i];
 }
@@ -402,11 +370,14 @@ for ($i = 0; $i < $n; $i++) {
 
 /*
 |--------------------------------------------------------------------------
-| MONTH CLIMATOLOGY FUNCTION
+| MONTH CLIMATOLOGY
 |--------------------------------------------------------------------------
 */
 
-function calculateMonthClimate(array $monthlyValues, array $months): array
+function calculateMonthClimate(
+    array $monthlyValues,
+    array $months
+): array
 {
     $sums =
         array_fill(
@@ -470,22 +441,9 @@ function calculateMonthClimate(array $monthlyValues, array $months): array
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| MONTH CLIMATOLOGY FOR EACH LEVEL
-|--------------------------------------------------------------------------
-*/
-
 $t2mMonthClimate =
     calculateMonthClimate(
         $t2mC,
-        $months
-    );
-
-
-$temp975MonthClimate =
-    calculateMonthClimate(
-        $temp975C,
         $months
     );
 
@@ -499,7 +457,7 @@ $temp925MonthClimate =
 
 /*
 |--------------------------------------------------------------------------
-| YEARLY TEMPERATURE FUNCTION
+| YEARLY TEMPERATURE
 |--------------------------------------------------------------------------
 */
 
@@ -532,23 +490,10 @@ function calculateYearTemperature(
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| YEARLY VALUES
-|--------------------------------------------------------------------------
-*/
-
 $yearT2m =
     calculateYearTemperature(
         $yearlyData,
         'months_t2m'
-    );
-
-
-$year975 =
-    calculateYearTemperature(
-        $yearlyData,
-        'months_975'
     );
 
 
@@ -561,19 +506,13 @@ $year925 =
 
 /*
 |--------------------------------------------------------------------------
-| YEAR CLIMATOLOGY
+| YEAR CLIMATE
 |--------------------------------------------------------------------------
 */
 
 $yearClimateT2m =
     !empty($yearT2m)
         ? array_sum($yearT2m) / count($yearT2m)
-        : null;
-
-
-$yearClimate975 =
-    !empty($year975)
-        ? array_sum($year975) / count($year975)
         : null;
 
 
@@ -585,11 +524,13 @@ $yearClimate925 =
 
 /*
 |--------------------------------------------------------------------------
-| ROLLING 12-MONTH FUNCTION
+| ROLLING 12-MONTH
 |--------------------------------------------------------------------------
 */
 
-function calculateRolling12(array $values): array
+function calculateRolling12(
+    array $values
+): array
 {
     $n =
         count($values);
@@ -639,21 +580,9 @@ function calculateRolling12(array $values): array
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| ROLLING VALUES
-|--------------------------------------------------------------------------
-*/
-
 $rollingT2m =
     calculateRolling12(
         $t2mC
-    );
-
-
-$rolling975 =
-    calculateRolling12(
-        $temp975C
     );
 
 
@@ -669,7 +598,9 @@ $rolling925 =
 |--------------------------------------------------------------------------
 */
 
-function calculateRollingClimate(array $rolling): ?float
+function calculateRollingClimate(
+    array $rolling
+): ?float
 {
     $sum =
         0.0;
@@ -705,12 +636,6 @@ $rollingClimateT2m =
     );
 
 
-$rollingClimate975 =
-    calculateRollingClimate(
-        $rolling975
-    );
-
-
 $rollingClimate925 =
     calculateRollingClimate(
         $rolling925
@@ -719,7 +644,7 @@ $rollingClimate925 =
 
 /*
 |--------------------------------------------------------------------------
-| SEASON DEFINITIONS
+| SEASONS
 |--------------------------------------------------------------------------
 */
 
@@ -754,7 +679,7 @@ $seasonDefinitions = [
 
 /*
 |--------------------------------------------------------------------------
-| SEASON SERIES FUNCTION
+| BUILD SEASON SERIES
 |--------------------------------------------------------------------------
 */
 
@@ -788,6 +713,11 @@ function buildSeasonSeries(
                 $seasonMonths
                 as $month
             ) {
+
+                /*
+                 * DJF December belongs to
+                 * previous calendar year.
+                 */
 
                 if (
                     $season === 'DJF' &&
@@ -833,25 +763,11 @@ function buildSeasonSeries(
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| SEASON SERIES
-|--------------------------------------------------------------------------
-*/
-
 $seasonT2m =
     buildSeasonSeries(
         $yearlyData,
         $seasonDefinitions,
         'months_t2m'
-    );
-
-
-$season975 =
-    buildSeasonSeries(
-        $yearlyData,
-        $seasonDefinitions,
-        'months_975'
     );
 
 
@@ -869,7 +785,9 @@ $season925 =
 |--------------------------------------------------------------------------
 */
 
-function calculateSeasonClimate(array $seasonSeries): array
+function calculateSeasonClimate(
+    array $seasonSeries
+): array
 {
     $climate = [];
 
@@ -900,12 +818,6 @@ function calculateSeasonClimate(array $seasonSeries): array
 $seasonClimateT2m =
     calculateSeasonClimate(
         $seasonT2m
-    );
-
-
-$seasonClimate975 =
-    calculateSeasonClimate(
-        $season975
     );
 
 
@@ -987,28 +899,29 @@ $monthCodes = [
 
 /*
 |--------------------------------------------------------------------------
-| PREPARE THREE CHART SERIES
+| CHART DATA
 |--------------------------------------------------------------------------
 */
 
 $chartT2m = [];
-$chart975 = [];
 $chart925 = [];
 
 
 /*
 |--------------------------------------------------------------------------
-| PREPARE DIFFERENCE SERIES
+| DIFFERENCE DATA
 |--------------------------------------------------------------------------
+|
+| IMPORTANT:
 |
 | difference =
 |
-|   T2m anomaly - 975 hPa anomaly
+|     T2m anomaly - 925 hPa anomaly
 |
 |--------------------------------------------------------------------------
 */
 
-$differenceValues = [];
+$differenceChart = [];
 
 
 /*
@@ -1046,26 +959,15 @@ function addChartPoint(
 
 if ($period === 'YEAR') {
 
-    /*
-     * Use only years present at all three levels.
-     */
-
     $commonYears =
         array_intersect_key(
             $yearT2m,
-            $year975
-        );
-
-    $commonYears =
-        array_intersect_key(
-            $commonYears,
             $year925
         );
 
 
     if (
         $yearClimateT2m !== null &&
-        $yearClimate975 !== null &&
         $yearClimate925 !== null
     ) {
 
@@ -1074,32 +976,32 @@ if ($period === 'YEAR') {
             as $year => $unused
         ) {
 
+            /*
+             * T2m anomaly.
+             */
+
             $anomalyT2m =
                 $yearT2m[$year] -
                 $yearClimateT2m;
 
 
-            $anomaly975 =
-                $year975[$year] -
-                $yearClimate975;
-
+            /*
+             * 925 hPa anomaly.
+             */
 
             $anomaly925 =
                 $year925[$year] -
                 $yearClimate925;
 
 
+            /*
+             * First chart.
+             */
+
             addChartPoint(
                 $chartT2m,
                 $year . '-01-01',
                 $anomalyT2m
-            );
-
-
-            addChartPoint(
-                $chart975,
-                $year . '-01-01',
-                $anomaly975
             );
 
 
@@ -1110,16 +1012,36 @@ if ($period === 'YEAR') {
             );
 
 
-            $differenceValues[] =
+            /*
+             * Second chart:
+             *
+             * T2m anomaly - 925 hPa anomaly
+             */
+
+            $difference =
                 $anomalyT2m -
-                $anomaly975;
+                $anomaly925;
+
+
+            $differenceChart[] = [
+
+                'x' =>
+                    $year . '-01-01',
+
+                'difference' =>
+                    round(
+                        $difference,
+                        2
+                    )
+
+            ];
         }
     }
 
 
 /*
 |--------------------------------------------------------------------------
-| ROLLING 12
+| ROLLING 12 MONTH
 |--------------------------------------------------------------------------
 */
 
@@ -1127,7 +1049,6 @@ if ($period === 'YEAR') {
 
     if (
         $rollingClimateT2m !== null &&
-        $rollingClimate975 !== null &&
         $rollingClimate925 !== null
     ) {
 
@@ -1135,7 +1056,6 @@ if ($period === 'YEAR') {
 
             if (
                 $rollingT2m[$i] === null ||
-                $rolling975[$i] === null ||
                 $rolling925[$i] === null
             ) {
                 continue;
@@ -1145,11 +1065,6 @@ if ($period === 'YEAR') {
             $anomalyT2m =
                 $rollingT2m[$i] -
                 $rollingClimateT2m;
-
-
-            $anomaly975 =
-                $rolling975[$i] -
-                $rollingClimate975;
 
 
             $anomaly925 =
@@ -1165,22 +1080,29 @@ if ($period === 'YEAR') {
 
 
             addChartPoint(
-                $chart975,
-                $dates[$i],
-                $anomaly975
-            );
-
-
-            addChartPoint(
                 $chart925,
                 $dates[$i],
                 $anomaly925
             );
 
 
-            $differenceValues[] =
+            $difference =
                 $anomalyT2m -
-                $anomaly975;
+                $anomaly925;
+
+
+            $differenceChart[] = [
+
+                'x' =>
+                    $dates[$i],
+
+                'difference' =>
+                    round(
+                        $difference,
+                        2
+                    )
+
+            ];
         }
     }
 
@@ -1205,17 +1127,12 @@ if ($period === 'YEAR') {
         $t2mMonthClimate[$month];
 
 
-    $climate975 =
-        $temp975MonthClimate[$month];
-
-
     $climate925 =
         $temp925MonthClimate[$month];
 
 
     if (
         $climateT2m !== null &&
-        $climate975 !== null &&
         $climate925 !== null
     ) {
 
@@ -1227,7 +1144,6 @@ if ($period === 'YEAR') {
             if (
                 !isset(
                     $info['months_t2m'][$month],
-                    $info['months_975'][$month],
                     $info['months_925'][$month]
                 )
             ) {
@@ -1238,11 +1154,6 @@ if ($period === 'YEAR') {
             $anomalyT2m =
                 $info['months_t2m'][$month] -
                 $climateT2m;
-
-
-            $anomaly975 =
-                $info['months_975'][$month] -
-                $climate975;
 
 
             $anomaly925 =
@@ -1258,22 +1169,29 @@ if ($period === 'YEAR') {
 
 
             addChartPoint(
-                $chart975,
-                $year . '-01-01',
-                $anomaly975
-            );
-
-
-            addChartPoint(
                 $chart925,
                 $year . '-01-01',
                 $anomaly925
             );
 
 
-            $differenceValues[] =
+            $difference =
                 $anomalyT2m -
-                $anomaly975;
+                $anomaly925;
+
+
+            $differenceChart[] = [
+
+                'x' =>
+                    $year . '-01-01',
+
+                'difference' =>
+                    round(
+                        $difference,
+                        2
+                    )
+
+            ];
         }
     }
 
@@ -1294,17 +1212,12 @@ if ($period === 'YEAR') {
         $seasonClimateT2m[$period];
 
 
-    $climate975 =
-        $seasonClimate975[$period];
-
-
     $climate925 =
         $seasonClimate925[$period];
 
 
     if (
         $climateT2m !== null &&
-        $climate975 !== null &&
         $climate925 !== null
     ) {
 
@@ -1315,16 +1228,11 @@ if ($period === 'YEAR') {
 
             if (
                 !isset(
-                    $season975[$period][$year],
                     $season925[$period][$year]
                 )
             ) {
                 continue;
             }
-
-
-            $temperature975 =
-                $season975[$period][$year];
 
 
             $temperature925 =
@@ -1334,11 +1242,6 @@ if ($period === 'YEAR') {
             $anomalyT2m =
                 $temperatureT2m -
                 $climateT2m;
-
-
-            $anomaly975 =
-                $temperature975 -
-                $climate975;
 
 
             $anomaly925 =
@@ -1354,22 +1257,29 @@ if ($period === 'YEAR') {
 
 
             addChartPoint(
-                $chart975,
-                $year . '-01-01',
-                $anomaly975
-            );
-
-
-            addChartPoint(
                 $chart925,
                 $year . '-01-01',
                 $anomaly925
             );
 
 
-            $differenceValues[] =
+            $difference =
                 $anomalyT2m -
-                $anomaly975;
+                $anomaly925;
+
+
+            $differenceChart[] = [
+
+                'x' =>
+                    $year . '-01-01',
+
+                'difference' =>
+                    round(
+                        $difference,
+                        2
+                    )
+
+            ];
         }
     }
 }
@@ -1377,7 +1287,7 @@ if ($period === 'YEAR') {
 
 /*
 |--------------------------------------------------------------------------
-| SORT ALL CHART SERIES
+| SORT CHART DATA
 |--------------------------------------------------------------------------
 */
 
@@ -1400,142 +1310,14 @@ usort(
 );
 
 usort(
-    $chart975,
-    $sortCallback
-);
-
-usort(
     $chart925,
     $sortCallback
 );
 
-
-/*
-|--------------------------------------------------------------------------
-| HISTOGRAM
-|--------------------------------------------------------------------------
-|
-| Automatic binning:
-|
-|   20 bins across the observed difference range.
-|--------------------------------------------------------------------------
-*/
-
-$histogramLabels = [];
-$histogramCounts = [];
-
-
-if (!empty($differenceValues)) {
-
-    $minDifference =
-        min($differenceValues);
-
-    $maxDifference =
-        max($differenceValues);
-
-
-    /*
-     * Avoid zero-width histogram.
-     */
-
-    if (
-        abs(
-            $maxDifference -
-            $minDifference
-        ) < 0.000001
-    ) {
-
-        $minDifference -=
-            0.5;
-
-        $maxDifference +=
-            0.5;
-    }
-
-
-    $binCount =
-        20;
-
-
-    $binWidth =
-        ($maxDifference - $minDifference) /
-        $binCount;
-
-
-    $histogramCounts =
-        array_fill(
-            0,
-            $binCount,
-            0
-        );
-
-
-    for (
-        $i = 0;
-        $i < $binCount;
-        $i++
-    ) {
-
-        $binStart =
-            $minDifference +
-            ($i * $binWidth);
-
-
-        $binEnd =
-            $binStart +
-            $binWidth;
-
-
-        $histogramLabels[] =
-
-            round(
-                $binStart,
-                1
-            )
-            . ' to '
-            .
-            round(
-                $binEnd,
-                1
-            )
-            . ' °C';
-    }
-
-
-    foreach (
-        $differenceValues
-        as $value
-    ) {
-
-        $index =
-            (int)floor(
-                ($value - $minDifference) /
-                $binWidth
-            );
-
-
-        /*
-         * Maximum value belongs
-         * to the final bin.
-         */
-
-        if (
-            $index >= $binCount
-        ) {
-
-            $index =
-                $binCount - 1;
-        }
-
-
-        if ($index < 0) {
-            $index = 0;
-        }
-
-
-        $histogramCounts[$index]++;
-    }
-}
+usort(
+    $differenceChart,
+    $sortCallback
+);
 
 
 /*
@@ -1552,14 +1334,6 @@ $jsonT2m =
     );
 
 
-$json975 =
-    json_encode(
-        $chart975,
-        JSON_UNESCAPED_SLASHES |
-        JSON_NUMERIC_CHECK
-    );
-
-
 $json925 =
     json_encode(
         $chart925,
@@ -1568,17 +1342,9 @@ $json925 =
     );
 
 
-$jsonHistogramLabels =
+$jsonDifference =
     json_encode(
-        $histogramLabels,
-        JSON_UNESCAPED_SLASHES |
-        JSON_NUMERIC_CHECK
-    );
-
-
-$jsonHistogramCounts =
-    json_encode(
-        $histogramCounts,
+        $differenceChart,
         JSON_UNESCAPED_SLASHES |
         JSON_NUMERIC_CHECK
     );
@@ -1598,7 +1364,7 @@ $jsonHistogramCounts =
 >
 
 <title>
-    ERA5 T2m / 975 / 925 hPa Temperature Anomalies
+    ERA5 T2m and 925 hPa Temperature Anomalies
 </title>
 
 
@@ -1671,7 +1437,7 @@ h2 {
     height: 400px;
 }
 
-.histogram-container {
+.difference-container {
     background: rgba(15, 23, 42, 0.6);
     padding: 2rem;
     border-radius: 20px;
@@ -1736,7 +1502,7 @@ select {
 
 
 <h1>
-    ERA5 Temperature Anomalies
+    ERA5 T2m and 925 hPa Temperature Anomalies
 </h1>
 
 
@@ -1932,18 +1698,18 @@ select {
 
 
 <!-- =========================================================
-     SECOND CHART
+     DIFFERENCE CHART
 ========================================================= -->
 
-<div class="histogram-container">
+<div class="difference-container">
 
     <h2>
-        Histogram: T2m anomaly − 975 hPa anomaly
+        Difference: T2m anomaly − 925 hPa anomaly
     </h2>
 
 
     <canvas
-        id="differenceHistogram"
+        id="differenceChart"
     ></canvas>
 
 </div>
@@ -1964,20 +1730,12 @@ const dataT2m =
     <?= $jsonT2m ?>;
 
 
-const data975 =
-    <?= $json975 ?>;
-
-
 const data925 =
     <?= $json925 ?>;
 
 
-const histogramLabels =
-    <?= $jsonHistogramLabels ?>;
-
-
-const histogramCounts =
-    <?= $jsonHistogramCounts ?>;
+const differenceData =
+    <?= $jsonDifference ?>;
 
 
 /*
@@ -2062,9 +1820,15 @@ const zeroLinePlugin = {
 |--------------------------------------------------------------------------
 | FIRST CHART
 |--------------------------------------------------------------------------
+|
+| ONLY:
+|
+|   T2m
+|   925 hPa
+|--------------------------------------------------------------------------
 */
 
-const ctx =
+const temperatureCtx =
     document
         .getElementById(
             'temperatureChart'
@@ -2073,7 +1837,7 @@ const ctx =
 
 
 new Chart(
-    ctx,
+    temperatureCtx,
     {
 
         type: 'line',
@@ -2128,48 +1892,6 @@ new Chart(
                 {
 
                     label:
-                        '975 hPa',
-
-                    data:
-                        data975,
-
-                    parsing: {
-
-                        xAxisKey:
-                            'x',
-
-                        yAxisKey:
-                            'anomaly'
-
-                    },
-
-                    borderColor:
-                        '#38bdf8',
-
-                    backgroundColor:
-                        'transparent',
-
-                    borderWidth:
-                        2.5,
-
-                    pointRadius:
-                        1,
-
-                    pointHoverRadius:
-                        5,
-
-                    tension:
-                        0.12,
-
-                    fill:
-                        false
-
-                },
-
-
-                {
-
-                    label:
                         '925 hPa',
 
                     data:
@@ -2186,7 +1908,7 @@ new Chart(
                     },
 
                     borderColor:
-                        '#f59e0b',
+                        '#38bdf8',
 
                     backgroundColor:
                         'transparent',
@@ -2381,7 +2103,7 @@ new Chart(
                                         .x
                                 ).substring(
                                     0,
-                                    4
+                                    7
                                 );
 
                             },
@@ -2426,20 +2148,38 @@ new Chart(
 
 /*
 |--------------------------------------------------------------------------
-| HISTOGRAM
+| SECOND CHART
+|--------------------------------------------------------------------------
+|
+| Each value is calculated separately:
+|
+|   T2m anomaly at date
+|       -
+|   925 hPa anomaly at same date
+|
+| Example:
+|
+|   1940-01:
+|       T2m anomaly - 925 anomaly
+|
+|   1940-02:
+|       T2m anomaly - 925 anomaly
+|
+|   etc.
+|
 |--------------------------------------------------------------------------
 */
 
-const histogramCtx =
+const differenceCtx =
     document
         .getElementById(
-            'differenceHistogram'
+            'differenceChart'
         )
         .getContext('2d');
 
 
 new Chart(
-    histogramCtx,
+    differenceCtx,
     {
 
         type:
@@ -2448,33 +2188,43 @@ new Chart(
 
         data: {
 
-            labels:
-                histogramLabels,
-
             datasets: [
 
                 {
 
                     label:
-                        'Number of periods',
+                        'T2m anomaly − 925 hPa anomaly',
 
                     data:
-                        histogramCounts,
+                        differenceData,
+
+                    parsing: {
+
+                        xAxisKey:
+                            'x',
+
+                        yAxisKey:
+                            'difference'
+
+                    },
 
                     borderWidth:
-                        1,
+                        0,
 
-                    borderColor:
-                        '#ffffff',
 
                     backgroundColor:
-                        'rgba(56,189,248,0.45)'
+                        'rgba(56,189,248,0.55)',
 
                 }
 
             ]
 
         },
+
+
+        plugins: [
+            zeroLinePlugin
+        ],
 
 
         options: {
@@ -2486,20 +2236,38 @@ new Chart(
                 false,
 
 
+            interaction: {
+
+                mode:
+                    'index',
+
+                intersect:
+                    false
+
+            },
+
+
             scales: {
 
                 x: {
 
-                    title: {
+                    type:
+                        'time',
 
-                        display:
-                            true,
+                    time: {
 
-                        text:
-                            'T2m anomaly − 975 hPa anomaly (°C)',
+                        unit:
+                            'year',
+
+                        tooltipFormat:
+                            'yyyy-MM'
+
+                    },
+
+                    grid: {
 
                         color:
-                            '#94a3b8'
+                            'rgba(255,255,255,0.06)'
 
                     },
 
@@ -2509,17 +2277,23 @@ new Chart(
                             '#94a3b8',
 
                         maxRotation:
-                            60,
+                            90,
 
                         minRotation:
-                            60
+                            90
 
                     },
 
-                    grid: {
+                    title: {
+
+                        display:
+                            true,
+
+                        text:
+                            'Date',
 
                         color:
-                            'rgba(255,255,255,0.06)'
+                            '#94a3b8'
 
                     }
 
@@ -2528,8 +2302,38 @@ new Chart(
 
                 y: {
 
-                    beginAtZero:
-                        true,
+                    grid: {
+
+                        color:
+                            'rgba(255,255,255,0.08)'
+
+                    },
+
+                    ticks: {
+
+                        color:
+                            '#94a3b8',
+
+                        callback:
+                            function(value) {
+
+                                const number =
+                                    Number(value);
+
+                                const sign =
+                                    number > 0
+                                        ? '+'
+                                        : '';
+
+                                return (
+                                    sign +
+                                    number.toFixed(1) +
+                                    ' °C'
+                                );
+
+                            }
+
+                    },
 
                     title: {
 
@@ -2537,24 +2341,10 @@ new Chart(
                             true,
 
                         text:
-                            'Frequency',
+                            'T2m anomaly − 925 hPa anomaly (°C)',
 
                         color:
                             '#94a3b8'
-
-                    },
-
-                    ticks: {
-
-                        color:
-                            '#94a3b8'
-
-                    },
-
-                    grid: {
-
-                        color:
-                            'rgba(255,255,255,0.08)'
 
                     }
 
@@ -2575,14 +2365,55 @@ new Chart(
 
                 tooltip: {
 
+                    displayColors:
+                        false,
+
+
                     callbacks: {
+
+                        title:
+                            function(items) {
+
+                                if (!items.length) {
+                                    return '';
+                                }
+
+
+                                const date =
+                                    new Date(
+                                        items[0].raw.x
+                                    );
+
+
+                                return date
+                                    .toISOString()
+                                    .substring(
+                                        0,
+                                        7
+                                    );
+
+                            },
+
 
                         label:
                             function(context) {
 
+                                const value =
+                                    Number(
+                                        context.raw.difference
+                                    );
+
+
+                                const sign =
+                                    value >= 0
+                                        ? '+'
+                                        : '';
+
+
                                 return (
-                                    'Frequency: ' +
-                                    context.raw
+                                    sign +
+                                    value.toFixed(2) +
+                                    ' °C'
                                 );
 
                             }
