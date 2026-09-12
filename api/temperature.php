@@ -1672,7 +1672,7 @@ select {
 <div class="difference-container">
 
     <h2>
-        Difference: T2m anomaly − 925 hPa anomaly
+        Difference: T2m anomaly − T925 anomaly
     </h2>
 
 
@@ -1859,7 +1859,7 @@ new Chart(
                      */
 
                     label:
-                        '925 hPa',
+                        'T925',
 
                     data:
                         data925,
@@ -2156,7 +2156,7 @@ new Chart(
                 {
 
                     label:
-                        'T2m anomaly − 925 hPa anomaly',
+                        'T2m anomaly − T925 anomaly',
 
                     data:
                         differenceData,
@@ -2319,7 +2319,7 @@ new Chart(
                             true,
 
                         text:
-                            'T2m anomaly − 925 hPa anomaly',
+                            'T2m anomaly − T925 anomaly',
 
                         color:
                             '#94a3b8'
