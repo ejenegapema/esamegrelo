@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily climate records — station 27612</title>
+<style>
+  :root {
+    --bg: #0f1115; --card: #171a21; --border: #2a2e38;
+    --text: #e6e8ee; --text-muted: #9399a8;
+    --pos: #ef5b5b; --neg: #4d9bf5; --zero: #9aa4b2;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+
+  form.controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:18px; }
+  form.controls label { font-size:13px; color:var(--text-muted); }
+  form.controls select, form.controls input {
+    background:#11131a; color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:14px;
+  }
+  form.controls input[name="ids"] { min-width: 260px; flex:1; }
+  form.controls button {
+    cursor:pointer; background:#2563eb; border:1px solid #2563eb; color:#fff; border-radius:6px; padding:7px 14px; font-size:14px;
+  }
+  form.controls button:hover { background:#1d4ed8; }
+
+  .meta-strip { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px; color:var(--text-muted); font-size:13px; }
+
+  .table-card { background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .table-scroll { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th, td { padding:8px 10px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--border); }
+  th { text-align:right; color:var(--text-muted); font-weight:600; }
+  .col-id, .col-name { text-align:left; }
+  .col-name a { color:#7db4ff; text-decoration:none; }
+  .col-name a:hover { text-decoration:underline; }
+  .unit { display:block; font-size:10px; color:var(--text-muted); font-weight:400; }
+  .cell-na { color:var(--text-muted); }
+  .dev-pos { color:var(--pos); }
+  .dev-neg { color:var(--neg); }
+  .dev-zero, .dev-na { color:var(--zero); }
+
+  .missing-note { margin-top:16px; padding:12px; border:1px solid #5a3a1a; background:#241a10; border-radius:8px; font-size:13px; color:#e2b98a; }
+  .missing-note ul { margin:6px 0 0; padding-left:18px; }
+
+  .empty-note { padding:20px; border:1px dashed var(--border); background:var(--card); border-radius:10px; color:var(--text-muted); font-size:14px; text-align:center; }
+  .empty-note code { background:#11131a; padding:2px 6px; border-radius:4px; color:var(--text); }
+
+  .page-footer { margin-top:18px; font-size:12px; color:var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Daily climate records — station 27612</h1>
+
+  <form class="controls" id="controls">
+    <label for="month">Month</label>
+    <select id="month" name="month"></select>
+
+    <label for="day">Day</label>
+    <select id="day" name="day"></select>
+
+    <label for="ids">Variable codes</label>
+    <input id="ids" name="ids" type="text" placeholder="e.g. TX, TN (blank = show all)">
+
+    <button type="submit">Show records</button>
+  </form>
+
+  <div class="meta-strip" id="metaStrip"></div>
+
+  <div class="table-card" id="tableCard">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-id">Code</th>
+            <th class="col-name">Variable</th>
+            <th>Record high</th>
+            <th>Year(s)</th>
+            <th>Record low</th>
+            <th>Year(s)</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="missing-note" id="missingNote" style="display:none">
+    <strong>Data gaps for this date</strong>
+    <ul id="missingList"></ul>
+  </div>
+
+  <div class="empty-note" id="emptyNote" style="display:none"></div>
+
+  <p class="page-footer">Warm/above-zero readings are shown in red, cold/below-zero readings in blue. Source: <code id="csvPathLabel"></code>.</p>
+</div>
+
+<script>
+/*
+ * ---------------------------------------------------------------------
+ * HOW THIS PAGE LOADS DATA
+ * ---------------------------------------------------------------------
+ * 1. Put daily_climate_records.csv in the SAME folder as this HTML file.
+ * 2. Serve the folder over http(s) — browsers block fetch() on local
+ *    file:// pages. From a terminal in that folder, either run:
+ *        python3 -m http.server 8000
+ *    and open http://localhost:8000/climate_records.html, or upload
+ *    both files to any static web host (Netlify, GitHub Pages, S3, etc.)
+ *    with the same relative path.
+ * 3. On load, the script below fetches the CSV as plain text, parses it
+ *    with a small built-in CSV parser (handles the quoted "1953, 1989"
+ *    style year lists), and builds a lookup keyed by "MM-DD".
+ * 4. Selecting a month/day re-renders the table from that in-memory
+ *    lookup — no further network requests are needed after the first
+ *    load.
+ * To point this page at a different file, change CSV_PATH below.
+ * ------------------------------------------------------------------- */
+const CSV_PATH = "daily_climate_records.csv";
+
+// Variable metadata: CSV column prefix, display code/name, unit, and
+// whether a "record low" is meaningful for that variable.
+const VARIABLES = [
+  { key: "tmax",   id: "TX", name: "Maximum temperature", unit: "°C", hasLow: true  },
+  { key: "tmean",  id: "TG", name: "Mean temperature",    unit: "°C", hasLow: true  },
+  { key: "tmin",   id: "TN", name: "Minimum temperature", unit: "°C", hasLow: true  },
+  { key: "precip", id: "RR", name: "Precipitation",       unit: "mm", hasLow: false },
+];
+const MONTH_NAMES = ["January","February","March","April","May","June",
+                      "July","August","September","October","November","December"];
+const DAYS_IN_MONTH = [31,29,31,30,31,30,31,31,30,31,30,31]; // Feb 29 always a valid archived date
+
+let recordsByDate = null; // "MM-DD" -> row object
+let maxYearsSeen = 0;
+
+// ---------------------------------------------------------- CSV parsing
+// Minimal RFC4180-style parser: handles quoted fields, escaped quotes
+// (""), and commas inside quotes (needed for the "1953, 1989" columns).
+function parseCSV(text) {
+  const rows = [];
+  let field = "", row = [], inQuotes = false, i = 0;
+  const endField = () => { row.push(field); field = ""; };
+  const endRow = () => { endField(); rows.push(row); row = []; };
+  while (i < text.length) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i += 2; continue; }
+      if (c === '"') { inQuotes = false; i++; continue; }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQuotes = true; i++; continue; }
+    if (c === ",") { endField(); i++; continue; }
+    if (c === "\r") { i++; continue; }
+    if (c === "\n") { endRow(); i++; continue; }
+    field += c; i++;
+  }
+  if (field.length || row.length) endRow();
+  if (!rows.length) return [];
+  const header = rows.shift();
+  return rows
+    .filter(r => r.length === header.length)
+    .map(r => Object.fromEntries(header.map((h, idx) => [h, r[idx]])));
+}
+
+function toNum(v) {
+  return v === undefined || v === "" ? null : Number(v);
+}
+
+// -------------------------------------------------------------- loading
+async function loadData() {
+  document.getElementById("csvPathLabel").textContent = CSV_PATH;
+  try {
+    const res = await fetch(CSV_PATH);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (!rows.length) throw new Error("CSV had no rows");
+
+    recordsByDate = {};
+    rows.forEach(r => {
+      const parsed = { month_day: r.month_day, n_years_with_data: toNum(r.n_years_with_data) };
+      VARIABLES.forEach(v => {
+        parsed[v.key + "_high"] = toNum(r[v.key + "_record_high"]);
+        parsed[v.key + "_high_years"] = r[v.key + "_record_high_years"] || "";
+        if (v.hasLow) {
+          parsed[v.key + "_low"] = toNum(r[v.key + "_record_low"]);
+          parsed[v.key + "_low_years"] = r[v.key + "_record_low_years"] || "";
+        }
+      });
+      recordsByDate[r.month_day] = parsed;
+      maxYearsSeen = Math.max(maxYearsSeen, parsed.n_years_with_data || 0);
+    });
+
+    buildDateControls();
+    render();
+  } catch (err) {
+    showEmpty(
+      "Couldn't load " + CSV_PATH + " (" + err.message + "). " +
+      "Make sure the file sits next to this page and that you're viewing it " +
+      "through a web server, not opened directly from disk."
+    );
+  }
+}
+
+// --------------------------------------------------------- UI: controls
+function buildDateControls() {
+  const monthSel = document.getElementById("month");
+  monthSel.innerHTML = MONTH_NAMES.map((m, idx) =>
+    `<option value="${idx + 1}">${m}</option>`).join("");
+
+  const today = new Date();
+  monthSel.value = today.getMonth() + 1;
+
+  monthSel.addEventListener("change", () => { buildDayControl(); render(); });
+  document.getElementById("day").addEventListener("change", render);
+  document.getElementById("ids").addEventListener("input", render);
+  document.getElementById("controls").addEventListener("submit", e => { e.preventDefault(); render(); });
+
+  buildDayControl();
+  const daySel = document.getElementById("day");
+  if (today.getDate() <= Number(daySel.options[daySel.options.length - 1].value)) {
+    daySel.value = today.getDate();
+  }
+}
+
+function buildDayControl() {
+  const month = Number(document.getElementById("month").value);
+  const daySel = document.getElementById("day");
+  const previous = Number(daySel.value) || 1;
+  const count = DAYS_IN_MONTH[month - 1];
+  daySel.innerHTML = Array.from({ length: count }, (_, i) =>
+    `<option value="${i + 1}">${i + 1}</option>`).join("");
+  daySel.value = Math.min(previous, count);
+}
+
+// -------------------------------------------------------------- render
+function pad2(n) { return String(n).padStart(2, "0"); }
+
+function devClass(value) {
+  if (value === null) return "";
+  if (Math.abs(value) < 0.05) return "dev-zero";
+  return value > 0 ? "dev-pos" : "dev-neg";
+}
+
+function fmt(value, unit) {
+  if (value === null) return `<span class="cell-na">—</span>`;
+  return `<span>${value.toFixed(1)}<span class="unit">${unit}</span></span>`;
+}
+
+function valueCell(value, unit, colorBySign) {
+  if (value === null) return `<td class="cell-na">—</td>`;
+  const cls = colorBySign ? devClass(value) : "";
+  return `<td><span class="${cls}">${value.toFixed(1)}</span><span class="unit">${unit}</span></td>`;
+}
+
+function yearsCell(years) {
+  return years ? `<td>${years}</td>` : `<td class="cell-na">—</td>`;
+}
+
+function render() {
+  if (!recordsByDate) return;
+  const month = Number(document.getElementById("month").value);
+  const day = Number(document.getElementById("day").value);
+  const key = `${pad2(month)}-${pad2(day)}`;
+  const row = recordsByDate[key];
+
+  if (!row) {
+    showEmpty(`No record found for ${MONTH_NAMES[month - 1]} ${day} in ${CSV_PATH}.`);
+    return;
+  }
+  hideEmpty();
+
+  const wanted = document.getElementById("ids").value
+    .split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
+  const vars = wanted.length ? VARIABLES.filter(v => wanted.includes(v.id)) : VARIABLES;
+
+  // meta strip
+  const dateLabel = `${MONTH_NAMES[month - 1]} ${day}`;
+  document.getElementById("metaStrip").innerHTML = `
+    <span>Station 27612</span>
+    <span>${dateLabel} (all years on record)</span>
+    <span>${row.n_years_with_data} of ${maxYearsSeen} years have data for this date</span>
+  `;
+
+  // table body
+  const body = vars.map(v => {
+    const high = row[v.key + "_high"];
+    const highYears = row[v.key + "_high_years"];
+    const low = v.hasLow ? row[v.key + "_low"] : null;
+    const lowYears = v.hasLow ? row[v.key + "_low_years"] : "";
+    return `
+      <tr>
+        <td class="col-id">${v.id}</td>
+        <td class="col-name">${v.name}</td>
+        ${valueCell(high, v.unit, true)}
+        ${yearsCell(highYears)}
+        ${v.hasLow ? valueCell(low, v.unit, true) : `<td class="cell-na">—</td>`}
+        ${v.hasLow ? yearsCell(lowYears) : `<td class="cell-na">—</td>`}
+      </tr>`;
+  }).join("");
+  document.getElementById("tableBody").innerHTML = body ||
+    `<tr><td colspan="6" class="cell-na">No variable matches that code filter.</td></tr>`;
+
+  // missing-data note
+  const issues = [];
+  if (row.n_years_with_data < maxYearsSeen) {
+    issues.push(`Only ${row.n_years_with_data} of ${maxYearsSeen} years in the archive have a reading for ${dateLabel} — typical for Feb 29, or dates near where a sensor came online.`);
+  }
+  vars.forEach(v => {
+    if (row[v.key + "_high"] === null) issues.push(`${v.name} (${v.id}) has no recorded values at all for ${dateLabel}.`);
+  });
+  const missingNote = document.getElementById("missingNote");
+  if (issues.length) {
+    document.getElementById("missingList").innerHTML = issues.map(i => `<li>${i}</li>`).join("");
+    missingNote.style.display = "block";
+  } else {
+    missingNote.style.display = "none";
+  }
+}
+
+function showEmpty(message) {
+  document.getElementById("tableCard").style.display = "none";
+  document.getElementById("missingNote").style.display = "none";
+  document.getElementById("metaStrip").innerHTML = "";
+  const empty = document.getElementById("emptyNote");
+  empty.textContent = message;
+  empty.style.display = "block";
+}
+function hideEmpty() {
+  document.getElementById("tableCard").style.display = "block";
+  document.getElementById("emptyNote").style.display = "none";
+}
+
+loadData();
+</script>
+</body>
+</html>
