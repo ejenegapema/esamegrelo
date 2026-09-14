@@ -15,25 +15,14 @@
   .page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
   h1 { font-size: 20px; margin: 0 0 16px; }
 
-  form.controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:18px; }
-  form.controls label { font-size:13px; color:var(--text-muted); }
-  form.controls select, form.controls input {
-    background:#11131a; color:var(--text); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:14px;
-  }
-  form.controls input[name="ids"] { min-width: 260px; flex:1; }
-  form.controls button {
-    cursor:pointer; background:#2563eb; border:1px solid #2563eb; color:#fff; border-radius:6px; padding:7px 14px; font-size:14px;
-  }
-  form.controls button:hover { background:#1d4ed8; }
-
   .meta-strip { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px; color:var(--text-muted); font-size:13px; }
 
   .table-card { background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-  .table-scroll { overflow-x:auto; }
+  .table-scroll { overflow-x:auto; max-height: 80vh; overflow-y:auto; }
   table { border-collapse:collapse; width:100%; font-size:13px; }
   th, td { padding:8px 10px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--border); }
-  th { text-align:right; color:var(--text-muted); font-weight:600; }
-  .col-id, .col-name { text-align:left; }
+  th { text-align:right; color:var(--text-muted); font-weight:600; position: sticky; top: 0; background: var(--card); z-index: 1; }
+  .col-id, .col-name, .col-date { text-align:left; }
   .col-name a { color:#7db4ff; text-decoration:none; }
   .col-name a:hover { text-decoration:underline; }
   .unit { display:block; font-size:10px; color:var(--text-muted); font-weight:400; }
@@ -55,19 +44,6 @@
 <div class="page">
   <h1>Daily climate records — station 27612</h1>
 
-  <form class="controls" id="controls">
-    <label for="month">Month</label>
-    <select id="month" name="month"></select>
-
-    <label for="day">Day</label>
-    <select id="day" name="day"></select>
-
-    <label for="ids">Variable codes</label>
-    <input id="ids" name="ids" type="text" placeholder="e.g. TX, TN (blank = show all)">
-
-    <button type="submit">Show records</button>
-  </form>
-
   <div class="meta-strip" id="metaStrip"></div>
 
   <div class="table-card" id="tableCard">
@@ -75,6 +51,7 @@
       <table>
         <thead>
           <tr>
+            <th class="col-date">Date</th>
             <th class="col-id">Code</th>
             <th class="col-name">Variable</th>
             <th>Record high</th>
@@ -89,7 +66,7 @@
   </div>
 
   <div class="missing-note" id="missingNote" style="display:none">
-    <strong>Data gaps for this date</strong>
+    <strong>Data gaps summary</strong>
     <ul id="missingList"></ul>
   </div>
 
@@ -112,10 +89,8 @@
  *    with the same relative path.
  * 3. On load, the script below fetches the CSV as plain text, parses it
  *    with a small built-in CSV parser (handles the quoted "1953, 1989"
- *    style year lists), and builds a lookup keyed by "MM-DD".
- * 4. Selecting a month/day re-renders the table from that in-memory
- *    lookup — no further network requests are needed after the first
- *    load.
+ *    style year lists), and renders every date/variable combination in
+ *    one long table — no controls needed.
  * To point this page at a different file, change CSV_PATH below.
  * ------------------------------------------------------------------- */
 const CSV_PATH = "daily_climate_records.csv";
@@ -130,7 +105,6 @@ const VARIABLES = [
 ];
 const MONTH_NAMES = ["January","February","March","April","May","June",
                       "July","August","September","October","November","December"];
-const DAYS_IN_MONTH = [31,29,31,30,31,30,31,31,30,31,30,31]; // Feb 29 always a valid archived date
 
 let recordsByDate = null; // "MM-DD" -> row object
 let maxYearsSeen = 0;
@@ -193,7 +167,6 @@ async function loadData() {
       maxYearsSeen = Math.max(maxYearsSeen, parsed.n_years_with_data || 0);
     });
 
-    buildDateControls();
     render();
   } catch (err) {
     showEmpty(
@@ -204,49 +177,11 @@ async function loadData() {
   }
 }
 
-// --------------------------------------------------------- UI: controls
-function buildDateControls() {
-  const monthSel = document.getElementById("month");
-  monthSel.innerHTML = MONTH_NAMES.map((m, idx) =>
-    `<option value="${idx + 1}">${m}</option>`).join("");
-
-  const today = new Date();
-  monthSel.value = today.getMonth() + 1;
-
-  monthSel.addEventListener("change", () => { buildDayControl(); render(); });
-  document.getElementById("day").addEventListener("change", render);
-  document.getElementById("ids").addEventListener("input", render);
-  document.getElementById("controls").addEventListener("submit", e => { e.preventDefault(); render(); });
-
-  buildDayControl();
-  const daySel = document.getElementById("day");
-  if (today.getDate() <= Number(daySel.options[daySel.options.length - 1].value)) {
-    daySel.value = today.getDate();
-  }
-}
-
-function buildDayControl() {
-  const month = Number(document.getElementById("month").value);
-  const daySel = document.getElementById("day");
-  const previous = Number(daySel.value) || 1;
-  const count = DAYS_IN_MONTH[month - 1];
-  daySel.innerHTML = Array.from({ length: count }, (_, i) =>
-    `<option value="${i + 1}">${i + 1}</option>`).join("");
-  daySel.value = Math.min(previous, count);
-}
-
 // -------------------------------------------------------------- render
-function pad2(n) { return String(n).padStart(2, "0"); }
-
 function devClass(value) {
   if (value === null) return "";
   if (Math.abs(value) < 0.05) return "dev-zero";
   return value > 0 ? "dev-pos" : "dev-neg";
-}
-
-function fmt(value, unit) {
-  if (value === null) return `<span class="cell-na">—</span>`;
-  return `<span>${value.toFixed(1)}<span class="unit">${unit}</span></span>`;
 }
 
 function valueCell(value, unit, colorBySign) {
@@ -259,59 +194,75 @@ function yearsCell(years) {
   return years ? `<td>${years}</td>` : `<td class="cell-na">—</td>`;
 }
 
+function dateLabel(monthDay) {
+  const [mm, dd] = monthDay.split("-").map(Number);
+  return `${MONTH_NAMES[mm - 1]} ${dd}`;
+}
+
 function render() {
   if (!recordsByDate) return;
-  const month = Number(document.getElementById("month").value);
-  const day = Number(document.getElementById("day").value);
-  const key = `${pad2(month)}-${pad2(day)}`;
-  const row = recordsByDate[key];
 
-  if (!row) {
-    showEmpty(`No record found for ${MONTH_NAMES[month - 1]} ${day} in ${CSV_PATH}.`);
+  const sortedKeys = Object.keys(recordsByDate).sort();
+  if (!sortedKeys.length) {
+    showEmpty(`No records found in ${CSV_PATH}.`);
     return;
   }
   hideEmpty();
 
-  const wanted = document.getElementById("ids").value
-    .split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
-  const vars = wanted.length ? VARIABLES.filter(v => wanted.includes(v.id)) : VARIABLES;
-
   // meta strip
-  const dateLabel = `${MONTH_NAMES[month - 1]} ${day}`;
   document.getElementById("metaStrip").innerHTML = `
     <span>Station 27612</span>
-    <span>${dateLabel} (all years on record)</span>
-    <span>${row.n_years_with_data} of ${maxYearsSeen} years have data for this date</span>
+    <span>${sortedKeys.length} dates in archive</span>
+    <span>Up to ${maxYearsSeen} years of data per date</span>
   `;
 
-  // table body
-  const body = vars.map(v => {
-    const high = row[v.key + "_high"];
-    const highYears = row[v.key + "_high_years"];
-    const low = v.hasLow ? row[v.key + "_low"] : null;
-    const lowYears = v.hasLow ? row[v.key + "_low_years"] : "";
-    return `
-      <tr>
-        <td class="col-id">${v.id}</td>
-        <td class="col-name">${v.name}</td>
-        ${valueCell(high, v.unit, true)}
-        ${yearsCell(highYears)}
-        ${v.hasLow ? valueCell(low, v.unit, true) : `<td class="cell-na">—</td>`}
-        ${v.hasLow ? yearsCell(lowYears) : `<td class="cell-na">—</td>`}
-      </tr>`;
-  }).join("");
-  document.getElementById("tableBody").innerHTML = body ||
-    `<tr><td colspan="6" class="cell-na">No variable matches that code filter.</td></tr>`;
+  // table body — one row per date/variable combination
+  let bodyRows = "";
+  const partialDates = [];
+  const fullyMissingCombos = [];
 
-  // missing-data note
-  const issues = [];
-  if (row.n_years_with_data < maxYearsSeen) {
-    issues.push(`Only ${row.n_years_with_data} of ${maxYearsSeen} years in the archive have a reading for ${dateLabel} — typical for Feb 29, or dates near where a sensor came online.`);
-  }
-  vars.forEach(v => {
-    if (row[v.key + "_high"] === null) issues.push(`${v.name} (${v.id}) has no recorded values at all for ${dateLabel}.`);
+  sortedKeys.forEach(key => {
+    const row = recordsByDate[key];
+    const label = dateLabel(key);
+
+    if (row.n_years_with_data < maxYearsSeen) {
+      partialDates.push(`${label} (${row.n_years_with_data}/${maxYearsSeen} years)`);
+    }
+
+    VARIABLES.forEach(v => {
+      const high = row[v.key + "_high"];
+      const highYears = row[v.key + "_high_years"];
+      const low = v.hasLow ? row[v.key + "_low"] : null;
+      const lowYears = v.hasLow ? row[v.key + "_low_years"] : "";
+
+      if (high === null) {
+        fullyMissingCombos.push(`${label} — ${v.name} (${v.id})`);
+      }
+
+      bodyRows += `
+        <tr>
+          <td class="col-date">${label}</td>
+          <td class="col-id">${v.id}</td>
+          <td class="col-name">${v.name}</td>
+          ${valueCell(high, v.unit, true)}
+          ${yearsCell(highYears)}
+          ${v.hasLow ? valueCell(low, v.unit, true) : `<td class="cell-na">—</td>`}
+          ${v.hasLow ? yearsCell(lowYears) : `<td class="cell-na">—</td>`}
+        </tr>`;
+    });
   });
+
+  document.getElementById("tableBody").innerHTML = bodyRows;
+
+  // missing-data summary note
   const missingNote = document.getElementById("missingNote");
+  const issues = [];
+  if (partialDates.length) {
+    issues.push(`${partialDates.length} date(s) have fewer than ${maxYearsSeen} years of data (e.g. Feb 29, or sensor start/end gaps).`);
+  }
+  if (fullyMissingCombos.length) {
+    issues.push(`${fullyMissingCombos.length} date/variable combination(s) have no recorded values at all.`);
+  }
   if (issues.length) {
     document.getElementById("missingList").innerHTML = issues.map(i => `<li>${i}</li>`).join("");
     missingNote.style.display = "block";
