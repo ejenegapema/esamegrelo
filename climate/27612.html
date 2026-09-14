@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Daily climate records — station 27612</title>
+<title>Daily records</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
@@ -199,12 +199,6 @@ function render() {
     return;
   }
   hideEmpty();
-
-  document.getElementById("metaStrip").innerHTML = `
-    <span>Station 27612</span>
-    <span>${sortedKeys.length} dates in archive</span>
-    <span>Up to ${maxYearsSeen} years of data per date</span>
-  `;
 
   let bodyRows = "";
 
