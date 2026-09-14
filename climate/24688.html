@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily records</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115; --card: #171a21; --border: #2a2e38;
+    --text: #e6e8ee; --text-muted: #9399a8;
+    --pos: #ef5b5b; --neg: #4d9bf5; --zero: #9aa4b2;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  .page { max-width: 1300px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  h2 { font-size: 15px; margin: 28px 0 12px; color: var(--text-muted); font-weight:600; }
+
+  .meta-strip { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px; color:var(--text-muted); font-size:13px; }
+
+  .table-card { background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .table-scroll { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:11.5px; }
+  th, td { padding:6px 9px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--border); }
+  th { text-align:right; color:var(--text-muted); font-weight:600; position: sticky; top: 0; background: var(--card); z-index: 1; font-size:12.6px; }
+  .col-date { text-align:left; font-weight:600; }
+  .yr { display:block; font-size:11.5px; color:var(--zero); line-height:1.3; }
+  .cell-na { color:var(--text-muted); }
+  .dev-pos { color:var(--pos); }
+  .dev-neg { color:var(--neg); }
+  .dev-zero { color:var(--zero); }
+  .dev-precip { color:var(--neg); }
+
+  .empty-note { padding:20px; border:1px dashed var(--border); background:var(--card); border-radius:10px; color:var(--text-muted); font-size:14px; text-align:center; }
+  .empty-note code { background:#11131a; padding:2px 6px; border-radius:4px; color:var(--text); }
+
+  .charts-grid { display:grid; grid-template-columns: 1fr; gap:16px; margin-top:8px; }
+  .chart-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; }
+  .chart-card .chart-title { font-size:13px; color:var(--text); margin:0 0 10px; font-weight:600; }
+  .chart-wrap { position:relative; height:280px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Daily climate records - Oymyakon</h1>
+
+  <div class="meta-strip" id="metaStrip"></div>
+
+  <div class="table-card" id="tableCard">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-date">Date</th>
+            <th>High Tmax</th>
+            <th>Low Tmax</th>
+            <th>High Tmean</th>
+            <th>Low Tmean</th>
+            <th>High Tmin</th>
+            <th>Low Tmin</th>
+            <th>High Precip</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="empty-note" id="emptyNote" style="display:none"></div>
+
+  <h2>Record trends across the year</h2>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <p class="chart-title">Maximum temperature - record high and low</p>
+      <div class="chart-wrap"><canvas id="chartTmax"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <p class="chart-title">Mean temperature - record high and low</p>
+      <div class="chart-wrap"><canvas id="chartTmean"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <p class="chart-title">Minimum temperature - record high and low</p>
+      <div class="chart-wrap"><canvas id="chartTmin"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <p class="chart-title">Precipitation - record high</p>
+      <div class="chart-wrap"><canvas id="chartPrecip"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CSV_PATH = "24688.csv";
+
+const VARIABLES = [
+  { key: "tmax",   id: "TX", name: "Maximum temperature", hasLow: true  },
+  { key: "tmean",  id: "TG", name: "Mean temperature",    hasLow: true  },
+  { key: "tmin",   id: "TN", name: "Minimum temperature", hasLow: true  },
+  { key: "precip", id: "RR", name: "Precipitation",       hasLow: false },
+];
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun",
+                      "Jul","Aug","Sep","Oct","Nov","Dec"];
+
+let recordsByDate = null;
+let maxYearsSeen = 0;
+
+function parseCSV(text) {
+  const rows = [];
+  let field = "", row = [], inQuotes = false, i = 0;
+  const endField = () => { row.push(field); field = ""; };
+  const endRow = () => { endField(); rows.push(row); row = []; };
+  while (i < text.length) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i += 2; continue; }
+      if (c === '"') { inQuotes = false; i++; continue; }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQuotes = true; i++; continue; }
+    if (c === ",") { endField(); i++; continue; }
+    if (c === "\r") { i++; continue; }
+    if (c === "\n") { endRow(); i++; continue; }
+    field += c; i++;
+  }
+  if (field.length || row.length) endRow();
+  if (!rows.length) return [];
+  const header = rows.shift();
+  return rows
+    .filter(r => r.length === header.length)
+    .map(r => Object.fromEntries(header.map((h, idx) => [h, r[idx]])));
+}
+
+function toNum(v) {
+  return v === undefined || v === "" ? null : Number(v);
+}
+
+async function loadData() {
+  try {
+    const res = await fetch(CSV_PATH);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (!rows.length) throw new Error("CSV had no rows");
+
+    recordsByDate = {};
+    rows.forEach(r => {
+      const parsed = { month_day: r.month_day, n_years_with_data: toNum(r.n_years_with_data) };
+      VARIABLES.forEach(v => {
+        parsed[v.key + "_high"] = toNum(r[v.key + "_record_high"]);
+        parsed[v.key + "_high_years"] = r[v.key + "_record_high_years"] || "";
+        if (v.hasLow) {
+          parsed[v.key + "_low"] = toNum(r[v.key + "_record_low"]);
+          parsed[v.key + "_low_years"] = r[v.key + "_record_low_years"] || "";
+        }
+      });
+      recordsByDate[r.month_day] = parsed;
+      maxYearsSeen = Math.max(maxYearsSeen, parsed.n_years_with_data || 0);
+    });
+
+    render();
+    buildCharts();
+  } catch (err) {
+    showEmpty(
+      "Couldn't load " + CSV_PATH + " (" + err.message + "). " +
+      "Make sure the file sits next to this page and that you're viewing it " +
+      "through a web server, not opened directly from disk."
+    );
+  }
+}
+
+function devClass(value) {
+  if (value === null) return "";
+  if (Math.abs(value) < 0.05) return "dev-zero";
+  return value > 0 ? "dev-pos" : "dev-neg";
+}
+
+function valueCell(value, years, isPrecip) {
+  if (value === null) return `<td class="cell-na">—</td>`;
+  const cls = isPrecip ? "dev-precip" : devClass(value);
+  return `<td>
+    <span class="${cls}">${value.toFixed(1)}</span>
+    <span class="yr">${years || ""}</span>
+  </td>`;
+}
+
+function dateLabel(monthDay) {
+  const [mm, dd] = monthDay.split("-").map(Number);
+  return `${MONTH_NAMES[mm - 1]} ${dd}`;
+}
+
+function render() {
+  if (!recordsByDate) return;
+
+  const sortedKeys = Object.keys(recordsByDate).sort();
+  if (!sortedKeys.length) {
+    showEmpty(`No records found in ${CSV_PATH}.`);
+    return;
+  }
+  hideEmpty();
+
+  let bodyRows = "";
+
+  sortedKeys.forEach(key => {
+    const row = recordsByDate[key];
+    const label = dateLabel(key);
+
+    bodyRows += `
+      <tr>
+        <td class="col-date">${label}</td>
+        ${valueCell(row.tmax_high, row.tmax_high_years, false)}
+        ${valueCell(row.tmax_low, row.tmax_low_years, false)}
+        ${valueCell(row.tmean_high, row.tmean_high_years, false)}
+        ${valueCell(row.tmean_low, row.tmean_low_years, false)}
+        ${valueCell(row.tmin_high, row.tmin_high_years, false)}
+        ${valueCell(row.tmin_low, row.tmin_low_years, false)}
+        ${valueCell(row.precip_high, row.precip_high_years, true)}
+      </tr>`;
+  });
+
+  document.getElementById("tableBody").innerHTML = bodyRows;
+}
+
+function showEmpty(message) {
+  document.getElementById("tableCard").style.display = "none";
+  document.getElementById("metaStrip").innerHTML = "";
+  const empty = document.getElementById("emptyNote");
+  empty.textContent = message;
+  empty.style.display = "block";
+}
+function hideEmpty() {
+  document.getElementById("tableCard").style.display = "block";
+  document.getElementById("emptyNote").style.display = "none";
+}
+
+const zeroLinePlugin = {
+  id: 'zeroLine',
+  afterDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!scales.y) return;
+    const y = scales.y.getPixelForValue(0);
+    if (y < chartArea.top || y > chartArea.bottom) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(chartArea.left, y);
+    ctx.lineTo(chartArea.right, y);
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
+function formatNumber(value, isPrecip) {
+  const num = Number(value);
+  if (isPrecip) {
+    return Number.isInteger(num) ? String(num) : num.toFixed(1);
+  }
+  const sign = num >= 0 ? '+' : '';
+  return sign + num.toFixed(1);
+}
+
+function buildCharts() {
+  const sortedKeys = Object.keys(recordsByDate).sort();
+  const toDate = (monthDay) => `2024-${monthDay}`;
+
+  function series(highKey, lowKey) {
+    const high = sortedKeys
+      .map(k => ({ x: toDate(k), y: recordsByDate[k][highKey] }))
+      .filter(p => p.y !== null);
+    const low = lowKey
+      ? sortedKeys
+          .map(k => ({ x: toDate(k), y: recordsByDate[k][lowKey] }))
+          .filter(p => p.y !== null)
+      : null;
+    return { high, low };
+  }
+
+  makeChart('chartTmax',   series('tmax_high', 'tmax_low'),   '°C', '#ef5b5b', false);
+  makeChart('chartTmean',  series('tmean_high', 'tmean_low'), '°C', '#ef5b5b', false);
+  makeChart('chartTmin',   series('tmin_high', 'tmin_low'),   '°C', '#ef5b5b', false);
+  makeChart('chartPrecip', series('precip_high', null),       'mm', '#4d9bf5', true);
+}
+
+function makeChart(canvasId, seriesData, unit, highColor, isPrecip) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+
+  const datasets = [
+    {
+      label: 'Record high',
+      data: seriesData.high,
+      borderColor: highColor,
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.12,
+      fill: false
+    }
+  ];
+
+  if (seriesData.low) {
+    datasets.push({
+      label: 'Record low',
+      data: seriesData.low,
+      borderColor: '#4d9bf5',
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.12,
+      fill: false
+    });
+  }
+
+  new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    plugins: [zeroLinePlugin],
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            unit: 'month',
+            tooltipFormat: 'MMM d',
+            displayFormats: { month: 'MMM' }
+          },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          ticks: {
+            color: '#94a3b8',
+            maxRotation: 0,
+            minRotation: 0
+          },
+          title: { display: false }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.08)' },
+          ticks: {
+            color: '#94a3b8',
+            callback: function(value) {
+              return formatNumber(value, isPrecip);
+            }
+          },
+          title: { display: true, text: unit, color: '#94a3b8' }
+        }
+      },
+      plugins: {
+        legend: {
+          display: !!seriesData.low,
+          labels: { color: '#e6e8ee', boxWidth: 12, font: { size: 11 } }
+        },
+        tooltip: {
+          displayColors: true,
+          callbacks: {
+            title: function(items) {
+              if (!items.length) return '';
+              const d = new Date(items[0].raw.x);
+              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            },
+            label: function(context) {
+              const value = Number(context.raw.y);
+              return context.dataset.label + ': ' + formatNumber(value, isPrecip) + ' ' + unit;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
