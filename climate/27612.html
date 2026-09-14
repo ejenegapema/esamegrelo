@@ -22,12 +22,12 @@
 
   .table-card { background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
   .table-scroll { overflow-x:auto; max-height: 75vh; overflow-y:auto; }
-  table { border-collapse:collapse; width:100%; font-size:11px; }
-  th, td { padding:5px 8px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--border); }
-  th { text-align:right; color:var(--text-muted); font-weight:600; position: sticky; top: 0; background: var(--card); z-index: 1; font-size:10px; }
+  table { border-collapse:collapse; width:100%; font-size:16.5px; }
+  th, td { padding:8px 12px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--border); }
+  th { text-align:right; color:var(--text-muted); font-weight:600; position: sticky; top: 0; background: var(--card); z-index: 1; font-size:15px; }
   .col-date { text-align:left; font-weight:600; }
-  .unit { font-size:9px; color:var(--text-muted); margin-left:1px; }
-  .yr { display:block; font-size:9px; color:var(--zero); line-height:1.3; }
+  .unit { font-size:13.5px; color:var(--text-muted); margin-left:2px; }
+  .yr { display:block; font-size:13.5px; color:var(--zero); line-height:1.3; }
   .cell-na { color:var(--text-muted); }
   .dev-pos { color:var(--pos); }
   .dev-neg { color:var(--neg); }
@@ -44,8 +44,6 @@
   .chart-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; }
   .chart-card .chart-title { font-size:13px; color:var(--text); margin:0 0 10px; font-weight:600; }
   .chart-wrap { position:relative; height:280px; }
-
-  .page-footer { margin-top:18px; font-size:12px; color:var(--text-muted); }
 </style>
 </head>
 <body>
@@ -100,28 +98,9 @@
       <div class="chart-wrap"><canvas id="chartPrecip"></canvas></div>
     </div>
   </div>
-
-  <p class="page-footer">Warm/above-zero readings are shown in red, cold/below-zero readings in blue. Source: <code id="csvPathLabel"></code>.</p>
 </div>
 
 <script>
-/*
- * ---------------------------------------------------------------------
- * HOW THIS PAGE LOADS DATA
- * ---------------------------------------------------------------------
- * 1. Put daily_climate_records.csv in the SAME folder as this HTML file.
- * 2. Serve the folder over http(s) — browsers block fetch() on local
- *    file:// pages. From a terminal in that folder, either run:
- *        python3 -m http.server 8000
- *    and open http://localhost:8000/climate_records.html, or upload
- *    both files to any static web host (Netlify, GitHub Pages, S3, etc.)
- *    with the same relative path.
- * 3. On load, the script fetches the CSV as plain text, parses it with a
- *    small built-in CSV parser (handles the quoted "1953, 1989" style
- *    year lists), renders one compact row per date, and builds 4 charts
- *    plotting record highs/lows across the calendar year.
- * To point this page at a different file, change CSV_PATH below.
- * ------------------------------------------------------------------- */
 const CSV_PATH = "daily_climate_records.csv";
 
 const VARIABLES = [
@@ -133,10 +112,9 @@ const VARIABLES = [
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun",
                       "Jul","Aug","Sep","Oct","Nov","Dec"];
 
-let recordsByDate = null; // "MM-DD" -> row object
+let recordsByDate = null;
 let maxYearsSeen = 0;
 
-// ---------------------------------------------------------- CSV parsing
 function parseCSV(text) {
   const rows = [];
   let field = "", row = [], inQuotes = false, i = 0;
@@ -167,9 +145,7 @@ function toNum(v) {
   return v === undefined || v === "" ? null : Number(v);
 }
 
-// -------------------------------------------------------------- loading
 async function loadData() {
-  document.getElementById("csvPathLabel").textContent = CSV_PATH;
   try {
     const res = await fetch(CSV_PATH);
     if (!res.ok) throw new Error("HTTP " + res.status);
@@ -203,7 +179,6 @@ async function loadData() {
   }
 }
 
-// -------------------------------------------------------------- render
 function devClass(value) {
   if (value === null) return "";
   if (Math.abs(value) < 0.05) return "dev-zero";
@@ -298,11 +273,6 @@ function hideEmpty() {
   document.getElementById("emptyNote").style.display = "none";
 }
 
-/*
-|--------------------------------------------------------------------------
-| ZERO LINE PLUGIN
-|--------------------------------------------------------------------------
-*/
 const zeroLinePlugin = {
   id: 'zeroLine',
   afterDraw(chart) {
@@ -322,15 +292,8 @@ const zeroLinePlugin = {
   }
 };
 
-/*
-|--------------------------------------------------------------------------
-| BUILD 4 CHARTS
-|--------------------------------------------------------------------------
-*/
 function buildCharts() {
   const sortedKeys = Object.keys(recordsByDate).sort();
-  // Use a fixed reference year (leap year, so Feb 29 has a slot) so the
-  // time scale can lay dates out correctly across a single calendar year.
   const toDate = (monthDay) => `2024-${monthDay}`;
 
   function series(highKey, lowKey) {
@@ -393,9 +356,17 @@ function makeChart(canvasId, seriesData, unit) {
       scales: {
         x: {
           type: 'time',
-          time: { unit: 'month', tooltipFormat: 'MMM d' },
+          time: {
+            unit: 'month',
+            tooltipFormat: 'MMM d',
+            displayFormats: { month: 'MMM' }
+          },
           grid: { color: 'rgba(255,255,255,0.06)' },
-          ticks: { color: '#94a3b8' },
+          ticks: {
+            color: '#94a3b8',
+            maxRotation: 0,
+            minRotation: 0
+          },
           title: { display: false }
         },
         y: {
